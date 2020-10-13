@@ -1,0 +1,53 @@
+{
+  "name": "handmade-blog",
+  "version": "1.0.0",
+  "description": "A static blog generator for people who want to start a blog quickly",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ParkSB/handmade-blog.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "bash ./tools/start.sh",
+    "build": "bash ./tools/build.sh",
+    "watch": "ts-node ./tools/watch.ts",
+    "publish": "ts-node ./tools/publish.ts",
+    "deploy": "bash ./tools/deploy.sh",
+    "test": "mocha -r ts-node/register ./services/tests/**/*.test.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ejs": "^2.6.1",
+    "highlight.js": "^9.15.6",
+    "katex": "^0.10.2",
+    "markdown-it": "^8.4.2",
+    "markdown-it-anchor": "^5.3.0",
+    "markdown-it-container": "^3.0.0",
+    "markdown-it-footnote": "^3.0.1",
+    "markdown-it-table-of-contents": "^0.4.4",
+    "markdown-it-texmath": "^0.5.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.3.4",
+    "@babel/preset-env": "^7.3.4",
+    "@types/chai": "^4.2.7",
+    "@types/ejs": "^2.6.3",
+    "@types/highlight.js": "^9.12.3",
+    "@types/markdown-it": "0.0.7",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^11.11.3",
+    "@typescript-eslint/eslint-plugin": "^2.13.0",
+    "@typescript-eslint/parser": "^2.13.0",
+    "chai": "^4.2.0",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-typescript": "^6.3.1",
+    "eslint-plugin-import": "^2.19.1",
+    "mocha": "^8.0.1",
+    "node-sass": "^4.14.1",
+    "parcel-bundler": "^1.12.4",
+    "sass": "^1.24.0",
+    "ts-node": "^8.0.3",
+    "typescript": "^3.3.3333"
+  }
+}
