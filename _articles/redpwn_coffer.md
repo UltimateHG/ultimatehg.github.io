@@ -16,21 +16,21 @@ So, how do we approach this question? We can take a look at the source provided 
 
 int main(void)
 {
-	long code = 0;
-	char name[16];
+  long code = 0;
+  char name[16];
   
-	setbuf(stdout, NULL);
-	setbuf(stdin, NULL);
-	setbuf(stderr, NULL);
+  setbuf(stdout, NULL);
+  setbuf(stdin, NULL);
+  setbuf(stderr, NULL);
 
-	puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
-	puts("What do you want to fill your coffer with?");
+  puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
+  puts("What do you want to fill your coffer with?");
 
-	gets(name);
+  gets(name);
 
-	if(code != 0) {
-		system("/bin/sh");
-	}
+  if(code != 0) {
+    system("/bin/sh");
+  }
 }
 ```
 
@@ -39,8 +39,8 @@ It looks like a standard buffer overflow question where the vulnerability here i
 This is our target line:
 ```c
 if(code != 0) {
-		system("/bin/sh");
-	}
+	system("/bin/sh");
+  }
 ```
 
 As long as we are able to overwrite `code`, it doesn't matter what we overwrite it with, it will redirect us to shell.
@@ -86,21 +86,21 @@ We take a look at the source code:
 
 int main(void)
 {
-	long code = 0;
-	char name[16];
+  long code = 0;
+  char name[16];
 	
-	setbuf(stdout, NULL);
-	setbuf(stdin, NULL);
-	setbuf(stderr, NULL);
+  setbuf(stdout, NULL);
+  setbuf(stdin, NULL);
+  setbuf(stderr, NULL);
 
-	puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
-	puts("What do you want to fill your coffer with?");
+  puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
+  puts("What do you want to fill your coffer with?");
 
-	gets(name);
+  gets(name);
 
-	if(code == 0xcafebabe) {
-		system("/bin/sh");
-	}
+  if(code == 0xcafebabe) {
+	system("/bin/sh");
+  }
 }
 ```
 
@@ -150,22 +150,21 @@ Similarly, we take a quick look at the source code:
 
 int main(void)
 {
-	long code = 0;
-	char name[16];
+  char name[16];
   
-	setbuf(stdout, NULL);
-	setbuf(stdin, NULL);
-	setbuf(stderr, NULL);
+  setbuf(stdout, NULL);
+  setbuf(stdin, NULL);
+  setbuf(stderr, NULL);
 
-	puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
-	puts("What do you want to fill your coffer with?");
+  puts("Welcome to coffer overflow, where our coffers are overfilling with bytes ;)");
+  puts("What do you want to fill your coffer with?");
 
-	gets(name);
+  gets(name);
 
 }
 
 void binFunction() {
-	system("/bin/sh");
+  system("/bin/sh");
 }
 ```
 
