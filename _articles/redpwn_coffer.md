@@ -1,5 +1,5 @@
 ---
-id: 1
+id: 0
 title: "Writeup for RedPwnCTF 2020 coffer-overflow-0, 1, 2"
 subtitle: "Beginner's Pwn"
 date: "2020.06.26"
