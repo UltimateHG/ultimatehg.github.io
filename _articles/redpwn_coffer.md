@@ -1,5 +1,5 @@
 ---
-id: 0
+id: 1
 title: "Writeup for RedPwnCTF 2020 coffer-overflow-0, 1, 2"
 subtitle: "Beginner's Pwn"
 date: "2020.06.26"
@@ -39,7 +39,7 @@ It looks like a standard buffer overflow question where the vulnerability here i
 This is our target line:
 ```c
 if(code != 0) {
-	system("/bin/sh");
+    system("/bin/sh");
   }
 ```
 
