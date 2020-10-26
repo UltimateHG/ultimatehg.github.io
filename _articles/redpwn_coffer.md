@@ -213,4 +213,4 @@ flag{ret_to_b1n_m0re_l1k3_r3t_t0_w1n}
 ```
 
 # Final words
-Overall, these challenges were pretty easy and meant for beginner CTF players, but it was still good practice to get used to the most basic form buffer overflow.
+Overall, these challenges were pretty easy and meant for beginner CTF players, but it was still good practice to get used to the most basic forms of buffer overflow.
