@@ -96,7 +96,7 @@ This defines a struct containing 8 function pointers. This is because we want to
 ```c
 #define NOP(x) \
   int nop##x() { \
-    printf("==> nop%d called, %llx\n", x, __builtin_return_address(0)); \
+    printf("==> nop%d called, %p\n", x, __builtin_return_address(0)); \
     return (DWORD)x; \
   }
 ```
@@ -123,7 +123,7 @@ Similarly to in the article, I used another macro to load in the function, alter
     printf("failed to load function: " #n "\n"); \
     exit(1); \
   } \
-  printf("pointer address of " #n ": %llx\n", *n##_func);
+  printf("pointer address of " #n ": %p\n", *n##_func);
 ```
 
 One big roadblock I had was that I did not understand how the functions were loaded in. As it turned out, all I had to do was to define datatypes that "emulated" the functions I wanted to load in. This is an example of what I did for `JP2KLibInitEx()`:
@@ -136,7 +136,7 @@ It is a function that returns an `int`, and accepts a `struct` of size `0x20` as
 I compiled my harness with MinGW (remember to compile it in 32-bit because Acrobat dlls are 32-bit!), and ran it with a dummy .jpg input, and voila:
 ```
 F:\jp2klib>fuzz.exe "198_027.jpg"
-pointer address of JP2KLibInitEx: 76286efd5e713130
+pointer address of JP2KLibInitEx: 5E713130
 JP2KLibInitEx: ret = 0
 ```
 
@@ -145,7 +145,7 @@ I have just successfully harnessed the `JP2KLibInitEx()` function! I then follow
 LOAD_FUNC(jp2klib, JP2KGetMemObjEx);
 //get return value and print return value
 void* mem_obj = JP2KGetMemObjEx_func();
-printf("JP2KGetMemObjEx: ret = %llx\n", mem_obj);
+printf("JP2KGetMemObjEx: ret = %p\n", mem_obj);
 
 LOAD_FUNC(jp2klib, JP2KDecOptCreate);
 int dec_opt = JP2KDecOptCreate_func();
@@ -155,19 +155,17 @@ printf("JP2KDecOptCreate: ret = %d\n", dec_opt);
 Similarly, I compiled the harness and executed it with an image input:
 ```
 F:\jp2klib>fuzz.exe "198_027.jpg"
-pointer address of JP2KLibInitEx: 76286efd5e713130
+pointer address of JP2KLibInitEx: 5E713130
 JP2KLibInitEx: ret = 0
 
-pointer address of JP2KGetMemObjEx: 5e7131305e7130f0
-JP2KGetMemObjEx: ret = 5e7131300061fed4
+pointer address of JP2KGetMemObjEx: 5E7130f0
+JP2KGetMemObjEx: ret = 006LFED4
 
-pointer address of JP2KDecOptCreate: 5e7131305e716690
-==> nop4 called, 61feb45e715da4
-==> nop7 called, 45e715de5
+pointer address of JP2KDecOptCreate: 5E716690
+==> nop4 called, 5E715DA4
+==> nop7 called, 5E715DE5
 JP2KDecOptCreate: ret = 4
 ```
-
-I used `%llx` to print the pointers because I was running my harness on a 64-bit system, so I just wanted to make sure. `%p` truncates the pointers printed by `%llx`, removing the first 8 characters.
 
 As we can see, the functions have been successfully loaded. There is still one thing I could not figure out, and that is the return type of `JP2KDecOptCreate()`. As it seemed, the article used a self-defined datatype `image_t` which I assume is a bitstream containing pixel data (I could be wrong), which I haven't yet figured out how to define. As I mentioned, I am basically completely new to C so it actually took be embarassingly long to get hold of something so simple. And this will actually be it for this post. I will update more as I finish up the harness and start running the fuzzer, but this is it for now.
 
