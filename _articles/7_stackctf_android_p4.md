@@ -105,7 +105,7 @@ Since we know it is an SQL injection challenge, let's try giving it the most bas
 
 ![](https://i.ibb.co/M9X75YK/5.png)
 
-Well, that worked. We now have the flag. But wh
+Well, that worked. We now have the flag.
 
 # Harnessing The Wrapper
 "Oh no! What if I don't know how to do SQL injection?"
