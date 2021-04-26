@@ -1,0 +1,141 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title> Learning To Harness: Crash Coursing C </title><meta name="viewport" content="width=device-width, user-scalable=no"><meta http-equiv="X-UA-Compatible" content="ie=edge"><link rel="icon" href="/pencil.bc69c320.png" type="image/x-icon"><link rel="stylesheet" href="/init.419b5839.css"><link rel="stylesheet" href="/article.10f3032f.css"></head><body> <header id="top-container" role="navigation"> </header> <main id="main-container"> <article id="article-container"> <h1 id="article-title"> Learning To Harness: Crash Coursing C </h1> <h2 id="article-subtitle"> Part 1: Understanding structs and pointers in a harness </h2> <time id="article-date"> 2020.10.26 </time> <section id="article-content-container"> <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><a href="#foreword">Foreword</a></li></ul></div></p>
+</details>
+<h2 id="foreword">Foreword</h2>
+<p>Ok yes, I know for those that have already learnt C, Obj-C or C++, or those who have been in the infosec field for some time, this may seem like a really dumb post (please don’t palm your face too hard), but I just thought I’d like to record down the things I learn along the way as I try to crash course C in order to write harnesses to fuzz Adobe Acrobat DC. Just for a little background, I have only mainly done software development in Java and Python alongside some web development and have never really looked too deep into C/C++/Obj-C (I learned a bit of C++ on my own but it was just merely a the most basics of the basics like the syntax and hello_world.cpp). This was a pretty new experience to me as all the experience I’ve had with memory, pointers, heaps and stacks were from CTF binary exploitation challenges. I could read some C code but never really tried coding a full executable by myself.</p>
+<h1 id="introduction">Introduction</h1>
+<p>The thing that motivated me to finally pick up C was slightly linked to my last post on reproducing a patched vulnerability on pdfium. Soon after we completed that task, we were assigned again to another task, and this time it was pretty insane. The only instruction we were given was: “Read and understand the code base of PDFium/Foxit Reader”. After struggling for a while, our supervisor revealed to us that the reason we had to understand the code base was so we could learn how to harness and fuzz individual libraries in order to find exploitable bugs. This got me thinking, since we started with PDFs, why not read up more on it? And as I sifted through the articles I managed to find a rather intruiging article, titled “<a href="https://research.checkpoint.com/2018/50-adobe-cves-in-50-days/">50 CVEs in 50 Days: Fuzzing Adobe Reader</a>”. In the article, the authors explained the concept of fuzzers and their journey of harnessing then fuzzing the JP2KLib.dll library of Adobe Acrobat DC. The code base for Adobe Acrobat is slightly different from PDFium or Foxit Reader, but the functionalities and execution logic should be similar enough for me to be able to grasp along the way, hence I decided to take it upon myself to understand how to code a harness for a .dll library. In this post, I will be referencing a lot to the article mentioned above.</p>
+<h1 id="understanding-the-basics">Understanding The Basics</h1>
+<p>C, as according to its description (on wikipedia), “is a general-purpose, procedural computer programming language” and provides constructs that map efficiently to typical machine instructions. This also means that we will be dealing quite a bit with pointers as well as stack/heap space. To a pure object-oriented programmer like me with only experience in garbge-collected languages like Java, some things were quite fresh. I had to of course first learn some basics, like (heavily simplified for reading pleasure):</p>
+<pre class="hljs"><code><span class="hljs-keyword">int</span> *number; <span class="hljs-comment">//this defines the variable "number" as a pointer to an integer, int* number also works</span>
+<span class="hljs-keyword">int</span> number2 = <span class="hljs-number">5</span>;
+*number = number2; <span class="hljs-comment">//using the dereference notation accesses the value at the pointer's location, thus this sets the value at number to 5</span>
+number = &amp;number2; <span class="hljs-comment">//this does the same thing as above, but this time referencing number2's pointer</span>
+
+<span class="hljs-keyword">char</span>* str = <span class="hljs-string">"abcdefg"</span>;
+<span class="hljs-comment">/**
+ * By assigning pointer *str to "abcdefg", *str or str[0] is 'a', str[1] is 'b' and so on.
+ * If we printf as a string (printf("The string is %s\n", *str)), it will print the whole string
+ */</span>
+</code></pre>
+<p>This is a rough example of the different types of basic pointer referencing and logic that I had to learn and get used to first before I started on understanding how to write a harness for a .dll in order to run a fuzzer. There are many tutorials and writeups out there explaining in detail all the concepts of pointer referencing and dereferencing as well as how to properly define and intialize variables in C to prevent memory leaks, but I won’t be talking too much about that here.</p>
+<h1 id="fuzzers-and-harnesses">Fuzzers and Harnesses</h1>
+<p>In Security Research, fuzzing is a lot more important than we might think. Fuzzing is basically taking an application and looking at its inputs, then thinking: how can I make this input so weird that the application has an error? It is a pretty effective way to discover many different edge cases as well as special cases that the developers of an application might have missed or not considered when programming their application. What a fuzzer aims to do is essentially take all its given inputs (the “corpus”) execute the application with these inputs one after another, immediately executing again with the next input the moment the application exits (it’s like a launch-execute-close bot). There are now some very famous optimized fuzzers out there like the american fuzzy loop (AFL), which only requires a minimum effective corpus, mutating said corpus to produce more possible inputs to aim for higher code coverage (higher sections of code base executed, more functions fired) and hopefully discover an edge case that causes a crash. These crashes can then be triaged and analysed on whether they could be exploited or not (e.g. is it a vulnerability?) and if so what is an example of a proof-of-concept exploit that could potentially exploit the application.</p>
+<p>As fuzzers repeatedly execute an application, it would take extermely long per execution if the application is big, say, the whole of Adobe Acrobat. However, what if we just targeted one specific library (load only that library) and call that library similarly to how normal functions within the application would call it and see how we could exploit that particular library? The runtime would be a lot faster than if we loaded up the entire application just to fuzz the functionalities of said library. This is where the concept of harnesses come into play.</p>
+<p>A harness could be thought of as a minimally working program that loads a library with a given input, call its entry functions and exits when the functions finish executing in the library. We want a harness that can accurately call as many functions as possible within the library with a given input and use the library like how the original application would, such that we create a minimally working application that only calls that library with inputs accepted by said library. An example harness can be seen <a href="https://github.com/googleprojectzero/winafl/blob/master/gdiplus.cpp">here</a> (minimal harness for gdiplus, from WinAFL’s github repo).</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;windows.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;gdiplus.h&gt;</span></span>
+
+<span class="hljs-keyword">using</span> <span class="hljs-keyword">namespace</span> Gdiplus;
+
+<span class="hljs-function"><span class="hljs-keyword">wchar_t</span>* <span class="hljs-title">charToWChar</span><span class="hljs-params">(<span class="hljs-keyword">const</span> <span class="hljs-keyword">char</span>* text)</span>
+</span>{
+  <span class="hljs-keyword">size_t</span> size = <span class="hljs-built_in">strlen</span>(text) + <span class="hljs-number">1</span>;
+  <span class="hljs-keyword">wchar_t</span>* wa = <span class="hljs-keyword">new</span> <span class="hljs-keyword">wchar_t</span>[size];
+  mbstowcs(wa,text,size);
+  <span class="hljs-keyword">return</span> wa;
+}
+
+<span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">main</span><span class="hljs-params">(<span class="hljs-keyword">int</span> argc, <span class="hljs-keyword">char</span>** argv)</span>
+</span>{
+  <span class="hljs-keyword">if</span>(argc &lt; <span class="hljs-number">2</span>) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">"Usage: %s &lt;image file&gt;\n"</span>, argv[<span class="hljs-number">0</span>]);
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+  }
+
+  GdiplusStartupInput gdiplusStartupInput;
+  ULONG_PTR gdiplusToken;
+  GdiplusStartup(&amp;gdiplusToken, &amp;gdiplusStartupInput, <span class="hljs-literal">NULL</span>);
+
+  Image *image = <span class="hljs-literal">NULL</span>;
+  image = <span class="hljs-keyword">new</span> Image(charToWChar(argv[<span class="hljs-number">1</span>]));
+  <span class="hljs-keyword">if</span>(image) <span class="hljs-keyword">delete</span> image;
+  
+  GdiplusShutdown(gdiplusToken);
+
+  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>But as we can see here, it is able to include <code>gdiplus.h</code>, the header defining all the functions used in the <code>gdiplus</code> library. This was something that I could not do when trying to learn how the article harnessed JP2KLib.dll, as there was no header file provided (obviously, since Adobe Acrobat DC is a closed source application). Hence, we have to do it some other way.</p>
+<h1 id="loading-the-entry-functions">Loading the Entry Functions</h1>
+<p>Let’s take a look at the post:</p>
+<blockquote>
+<p>JP2KLibInitEx is the first function called after loading JP2KLib. We noticed that JP2KLibInitEx takes only one argument.</p>
+<p>We can see that it’s a struct of size 0x20 and it contains pointers to functions in AcroRd32.dll. When we encounter an unknown function, we don’t rush into reversing it as we don’t know if it’s going to be used by the target code. Instead, we point each address to a unique empty function we call “nopX” (where X is a number).</p>
+<p>We now have enough information to start writing our harness skeleton:</p>
+<ol>
+<li>Get input file from command line arguments.</li>
+<li>Load JP2KLib.dll.</li>
+<li>Get a pointer to JP2KLibInitEx and call it with a struct of 8 nop functions.</li>
+</ol>
+</blockquote>
+<p>Okay, let’s slow down a little bit. Firstly, what is a <code>struct</code> of size <code>0x20</code>? <code>0x20</code> is actually hex for 32, so a <code>struct</code> of size 0x20 is 32 bytes in size. Let’s break it down slowly. A <code>struct</code> in C allows us to declare a composite datatype. From the article’s analysis, the JP2KLibInitEx function seems to take in a argument which contains 8 pointers to other functions. Since Adobe Acrobat is a 32-bit application on Windows, this means that the pointers are 4 bytes each, so 8 pointers would be 4 x 8 = 32 bytes. Hence, we define our struct, <code>vtable_t</code>, to contain 8 <code>int</code> functions (8 functions that return int). Since an <code>int</code> is 4 bytes, perfect for storing a 32-bit pointer, this also fits the input argument of JP2KLibInitEx. Hence, we can define as such:</p>
+<pre class="hljs"><code><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> {</span>
+  <span class="hljs-keyword">int</span> (*funcs[<span class="hljs-number">8</span>])();
+} <span class="hljs-keyword">vtable_t</span>;
+</code></pre>
+<p>This defines a struct containing 8 function pointers. This is because we want to initialize each individual function as a <code>nop</code> function that just prints itself when called together with its address and returns. The article made use of a macro to create the <code>nop</code> functions (<code>nop0</code> through <code>nop7</code>), and I had to alter it a little bit to get it working for me:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> NOP(x) \
+  int nop##x() { \
+    printf(<span class="hljs-meta-string">"==&gt; nop%d called, %p\n"</span>, x, __builtin_return_address(0)); \
+    return (DWORD)x; \
+  }</span>
+</code></pre>
+<p>I then call it before int main() in order to create the 8 <code>nop</code> functions. Then, just like in the article, I placed them in a <code>vtable_t</code> struct, loaded JP2KLib.dll, loaded the function JP2KLibInitEx() and passed the struct as an argument to the function:</p>
+<pre class="hljs"><code>HMODULE jp2klib = LoadLibraryA(<span class="hljs-string">"JP2KLib.dll"</span>);
+<span class="hljs-keyword">if</span>(jp2klib == <span class="hljs-literal">NULL</span>) {
+  <span class="hljs-built_in">printf</span>(<span class="hljs-string">"failed to load directory, gle = %d\n"</span>, GetLastError());
+  <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+  }
+
+LOAD_FUNC(jp2klib, JP2KLibInitEx);
+<span class="hljs-comment">//get return value by passing 0x20 vtable struct with nop functions and print return value</span>
+<span class="hljs-keyword">int</span> ret = JP2KLibInitEx_func(&amp;vtable);
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">"JP2KLibInitEx: ret = %d\n"</span>, ret);
+</code></pre>
+<p>Similarly to in the article, I used another macro to load in the function, altering it slightly to make it work for me:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> LOAD_FUNC(h, n) \
+  n##_func_t n##_func = (n##_func_t)GetProcAddress(h, #n); \
+  <span class="hljs-meta-keyword">if</span> (!n##_func) { \
+    printf(<span class="hljs-meta-string">"failed to load function: "</span> #n <span class="hljs-meta-string">"\n"</span>); \
+    exit(1); \
+  } \
+  printf(<span class="hljs-meta-string">"pointer address of "</span> #n <span class="hljs-meta-string">": %p\n"</span>, *n##_func);</span>
+</code></pre>
+<p>One big roadblock I had was that I did not understand how the functions were loaded in. As it turned out, all I had to do was to define datatypes that “emulated” the functions I wanted to load in. This is an example of what I did for <code>JP2KLibInitEx()</code>:</p>
+<pre class="hljs"><code><span class="hljs-function"><span class="hljs-keyword">typedef</span> <span class="hljs-title">int</span> <span class="hljs-params">(__stdcall *JP2KLibInitEx_func_t)</span><span class="hljs-params">(<span class="hljs-keyword">vtable_t</span>* vtbl)</span></span>;
+</code></pre>
+<p>It is a function that returns an <code>int</code>, and accepts a <code>struct</code> of size <code>0x20</code> as an input.</p>
+<p>I compiled my harness with MinGW (remember to compile it in 32-bit because Acrobat dlls are 32-bit!), and ran it with a dummy .jpg input, and voila:</p>
+<pre class="hljs"><code>F:\jp2klib&gt;fuzz.exe &quot;198_027.jpg&quot;
+pointer address of JP2KLibInitEx: 5E713130
+JP2KLibInitEx: ret = 0
+</code></pre>
+<p>I have just successfully harnessed the <code>JP2KLibInitEx()</code> function! I then followed along what the article mentioned about the few following functions, and ended up successfully harnessing <code>JP2KGetMemObjEx()</code> and <code>JP2KDecOptCreate()</code> as well:</p>
+<pre class="hljs"><code>LOAD_FUNC(jp2klib, JP2KGetMemObjEx);
+<span class="hljs-comment">//get return value and print return value</span>
+<span class="hljs-keyword">void</span>* mem_obj = JP2KGetMemObjEx_func();
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">"JP2KGetMemObjEx: ret = %p\n"</span>, mem_obj);
+
+LOAD_FUNC(jp2klib, JP2KDecOptCreate);
+<span class="hljs-keyword">int</span> dec_opt = JP2KDecOptCreate_func();
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">"JP2KDecOptCreate: ret = %d\n"</span>, dec_opt);
+</code></pre>
+<p>Similarly, I compiled the harness and executed it with an image input:</p>
+<pre class="hljs"><code>F:\jp2klib&gt;fuzz.exe &quot;198_027.jpg&quot;
+pointer address of JP2KLibInitEx: 5E713130
+JP2KLibInitEx: ret = 0
+
+pointer address of JP2KGetMemObjEx: 5E7130f0
+JP2KGetMemObjEx: ret = 006LFED4
+
+pointer address of JP2KDecOptCreate: 5E716690
+==&gt; nop4 called, 5E715DA4
+==&gt; nop7 called, 5E715DE5
+JP2KDecOptCreate: ret = 4
+</code></pre>
+<p>As we can see, the functions have been successfully loaded. There is still one thing I could not figure out, and that is the return type of <code>JP2KDecOptCreate()</code>. As it seemed, the article used a self-defined datatype <code>image_t</code> which I assume is a bitstream containing pixel data (I could be wrong), which I haven’t yet figured out how to define. As I mentioned, I am basically completely new to C so it actually took be embarassingly long to get hold of something so simple. And this will actually be it for this post. I will update more as I finish up the harness and start running the fuzzer, but this is it for now.</p>
+<h1 id="final-words">Final Words</h1>
+<p>I know that I am new to C, and I daresay that I am new to infosec as well, so I would gladly learn from my mistakes if I were to make any, and I would also like to thank you for sitting through this and bearing with me (and my amateur writeup). Likewise, if I made any serious conceptual errors or if there’s anything you would like to correct me on or would like me to remove, feel free to email me at <a href="mailto:yitiancw02@gmail.com">yitiancw02@gmail.com</a> and I would make the necessary changes. Just learning something seemingly this simple still broadened my knowledge on this subject, and security research never fails to amaze me. I will continue to research into PDF fuzzing and hopefully gain something out of it eventually.</p>
+<p>Thanks for reading.</p> </section> <section id="article-navigation"> <div class="article-navigation-item article-navigation-prev"> <a href="/article\1.html"> <div class="article-navigation-arrow article-navigation-prev">＜</div> <div class="article-navigation-content article-navigation-prev"> <p class="article-navigation-title">Reproduction of PDFium Issue #933163</p> <p class="article-navigation-subtitle">Use-after-Free vulnerability on CXFA_FFDocView::RunValidate()</p> </div> </a> </div> <div class="article-navigation-item article-navigation-next"> <a href="/article\3.html"> <div class="article-navigation-arrow article-navigation-next">＞</div> <div class="article-navigation-content article-navigation-next"> <p class="article-navigation-title">Learning To Harness: Custom Stream Decoders</p> <p class="article-navigation-subtitle">Part 2: Reverse Engineering a Stream Decoder</p> </div> </a> </div> </section> <section id="article-list-button-container"> <a href="/articles.html"> <div id="article-list-button"><img src="/back.842087c7.png" style="width:32px;height:32px;"></div> </a> </section> </article> </main> <script defer src="/init.2ffd8e8b.js"></script> </body></html>
