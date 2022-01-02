@@ -257,6 +257,6 @@ Because the library had changed over the years, when I tried running my harness 
 
 
 # Final Words
-What did this mean? This meant that I had to figure out what nop0 was exactly and implement it, as well as make sure that all my other functions were correctly harnessed.  I had learnt a lot and gotten a lot more familiar with the rev-debugging process and this was definitely fun, albeit stressful and frustrating. I'm still in the process of reverse engineering the missing link of my harness, so hopefully another writeup would come soon after I figure things out. But I guess that's it for now.
+In the end, I still have to figure out what nop0 was exactly and implement it, as well as make sure that all my other functions were correctly harnessed. I had learnt a lot and gotten a lot more familiar with the rev-debugging process and this was definitely fun, albeit stressful and frustrating. I'm still in the process of reverse engineering the missing link in my harness, so hopefully another writeup could come soon, after I figure some things out. But I guess that's it for now.
 
 Thanks for reading.
