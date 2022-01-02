@@ -223,10 +223,12 @@ JP2KImageInitDecoderEx: ret = 0
 ```
 
 It returned 0! We can now move on. This took waaaaay longer than I would've hoped.
-> Common error return values that I got:
+
+
+_Common error return values that I got:_
+> 17 - This meant that the input image was not a valid jp2 image, or was not a jp2 image at all.
 > 
-> 17: This meant that the input image was not a valid jp2 image, or was not a jp2 image at all.
-> 26: This meant that something went wrong in the process of decoding the image. Something went wrong with one or more of the file stream functions.
+> 26 - This meant that something went wrong in the process of decoding the image. Something went wrong with one or more of the file stream functions.
 
 Anecdote: I was tearing my hair out because `JP2KImageInitDecoderEx` kept failing for me even though I felt I had already implemented everything correctly, but it turned out that for certain file stream functions, the _file stream pointer itself_ was passed directly into them instead of just the _custom file stream object_.
 

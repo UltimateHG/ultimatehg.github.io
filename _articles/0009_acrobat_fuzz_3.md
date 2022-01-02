@@ -108,7 +108,7 @@ At this point, we were really confused: if even after implementing nop0, nop1 an
 2. `JP2KImageDecodeTileInterleaved` seemed to be called in a loop, not always just once or twice. The size of the loop also seemed to be determined by an external factor that we didn't know at the time.
 3. `JP2KImageDecodeTileInterleaved` did not actually take in the return value of `JP2KImageGetMaxRes` as its third argument, instead `JP2KImageGetMaxRes` just always returned 0x5 while the actual value passed into `JP2KImageDecodeTileInterleaved` was a number anywhere between 0x0 to 0x5.
 4. The second argument of `JP2KImageDecodeTileInterleaved` was not 0, that was just an error on my part when I first looked at it in IDA. It in fact increases with the loop iteration (0x0 on loop 1, 0x1 on loop 2 etc.).
-5. `JP2KImageDataCreate` was called before each time `JP2KImageDecodeTileInterleaved` was called in the loop, and `JP2KImageDataDestryo` was called after. This meant that a new instance of `image_data` was used for each time `JP2KImageDecodeTileInterleaved` was called.
+5. `JP2KImageDataCreate` was called before each time `JP2KImageDecodeTileInterleaved` was called in the loop, and `JP2KImageDataDestroy` was called after. This meant that a new instance of `image_data` was used for each time `JP2KImageDecodeTileInterleaved` was called.
 6. As it turned out, I had also incidentally swapped the positions of my arguments in `file_obj_seek`. `DWORD whence` (changed from `uint64_t whence` from the previous post) in fact came before `uint64_t offset` (changed from `int offset` from the previous post). So it was actually
 ```c
 int file_obj_seek(FILE* fileptr, DWORD whence, uint64_t offset)
