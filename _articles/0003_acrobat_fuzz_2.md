@@ -7,13 +7,15 @@ tags: "c, fuzzing, adobe, acrobat dc"
 ---
 
 ## Foreword
-I've been gone for a little long this time, mainly because I took the time to finish the entire book of "The C Programming Language" by Brian Kernighan and Dennis Ritchie. It was a rather quick read (I guess C is not a very complex language after all) compared to other languages I've learnt (objected-oriented languages, especially), but it helped me immensely. Adobe Acrobat and Adobe Reader has changed a lot since the article I was following in the last article had been written, that JP2KLib also had a bit of a minor change, so I ended up having to change some things and do a bit of debugging by myself to fix the harness, and I will be covering all of that here.
+I've been gone for a little long this time, mainly because I took the time to finish the entire book of "The C Programming Language" by Brian Kernighan and Dennis Ritchie. It was a rather quick read (I guess C was not a very complex language after all), but it helped me immensely. Adobe Acrobat and Adobe Reader had changed a lot since the article I was following in the last article was written, and `JP2KLib.dll` also had a bit of a minor change, so I ended up having to change some things and do a bit of debugging by myself to fix the harness, and I will be covering all of that here.
 
 # Introduction
-The last time I touched this, I was simply following suit along with the article "[50 CVEs in 50 Days](https://research.checkpoint.com/2018/50-adobe-cves-in-50-days/)" written by Yoav Alon and Netanel Ben-Simon. I stopped the previous time at `JP2KDecOptCreate`, where my function returned 4, which was not the correct return value for this function. This time, with much better knowledge and more experience in debugging as well as reverse engineering the JP2K library, I decided that there were many things that I had to make sure by myself to ensure that the harness would not break. I will be using windbg and IDA a lot through this post so please bear with me. Once again, let's take this slowly.
+The last time I touched this, I was simply following suit along with the article "[50 CVEs in 50 Days](https://research.checkpoint.com/2018/50-adobe-cves-in-50-days/)". I stopped last time at `JP2KDecOptCreate`, where my function did not return the correct return value for the function. This time, with much better knowledge and more experience in debugging as well as reverse engineering the JP2K library, I decided that there were many things that I had to confirm myself to ensure that the harness would not break. I will be using windbg and IDA a lot through this post so please bear with me.
 
 # Implementing the NOP Functions
-I first needed to figure out what nop4 and nop7 could possibly be, as they were both called by `JP2KDecOptCreate`. The article mentioned that they were wrappers around `malloc` and `memset`, but I had to make sure for myself. I fired up windbg and set a breakpoint at nop4 and nop7 respectively, then stepped forward one at a time until eventually I arrived at the following:<br>
+I first needed to figure out what nop4 and nop7 could possibly be, as they were both called by `JP2KDecOptCreate`. The article mentioned that they were wrappers around `malloc` and `memset`, but I had to make sure for myself. I fired up windbg and set a breakpoint at nop4 and nop7 respectively, then stepped forward one execution step at a time until eventually I arrived at the following:
+
+
 nop4:
 ```
 eax=0ebc3db6 ebx=00000000 ecx=75e1edb0 edx=01400200 esi=75e1edb0 edi=222d65c8
@@ -32,7 +34,7 @@ Acrobat+0x4d3e0:
 79c4d3e0 ff25f0413a7b    jmp     dword ptr [Acrobat!CTJPEGThrowException+0x2851f0 (7b3a41f0)] ds:002b:7b3a41f0={VCRUNTIME140!memset (72183c30)}
 ```
 
-There we go, so now we know for sure that at least these 2 wrappers have not changed. I went ahead and implemented them. The malloc wrapper was pretty straightforward to implement, it just takes in an argument for size to pass to `malloc` and returns the address that `malloc` returns. The `memset` was also pretty straightforward, as even though it took in 3 args it took them in the perfect order that `memset` also accepted: `void* dest, int val, int size` in this exact order. After implementing them, I ran the harness again to make sure it was not crashing, and it worked.
+There, now we know for sure that at least these 2 wrappers had not changed so I went ahead and implemented them. The `malloc` wrapper was pretty straightforward to implement, it just took in an argument for size to pass to `malloc` and returned the address that `malloc` returned. The `memset` wrapper was also pretty straightforward as it took in 3 args in the same order that `memset` accepted: `void* dest, int val, int size` in this exact order. After implementing them, I ran the harness again to make sure it was not crashing, and it worked.
 ```
 ...
 pointer address of JP2KDecOptCreate: 79A16690
@@ -41,7 +43,9 @@ pointer address of JP2KDecOptCreate: 79A16690
 JP2KDecOptCreate: ret = 001A1C48
 ```
 
-The article also mentioned that nop5 and nop6 were wrappers around `free` and `memcpy` respectively, but I also had to make sure for myself:<br>
+The article also mentioned that nop5 and nop6 were wrappers around `free` and `memcpy` respectively, but I also had to make sure for myself:
+
+
 nop5:
 ```
 eax=7bc6c51c ebx=00000000 ecx=79c735d0 edx=04000000 esi=79c735d0 edi=00000000
@@ -60,13 +64,14 @@ JP2KLib!JP2KTileGeometryRegionIsTile+0x3bf:
 79a1600f ffd6            call    esi {Acrobat!AX_PDXlateToHostEx+0x418530 (7a3f3780)}
 ```
 
-As you can see, nop5 was straightforward but nop6 wasn't quite so, so I fired up IDA and looked into the function it was calling and sure enough, it was a memcpy wrapper:<br><br>
+nop5 was straightforward but nop6 wasn't quite so, so I fired up IDA and looked into the function it was calling and sure enough, it was a memcpy wrapper:
+
 ![](https://i.ibb.co/5xDQS5T/nop6.png)
 
 I implemented nop4, nop5, nop6 and nop7 and then moved onwards to the next functions.
 
 # Implementing a Custom File Stream Class
-Following the article, I added `JP2KDecOptInitToDefaults` and passed it the return value from `JP2KDecOptCreate`. This was definitely still the case as a quick run in windbg shows that:
+Following the article, I added `JP2KDecOptInitToDefaults` and passed to it the return value from `JP2KDecOptCreate`. This was definitely still the case as a quick run in windbg showed that:
 ```
 eax=240ee4f0 ebx=00000000 ecx=00000001 edx=00000058 esi=79fffb30 edi=240d3e88
 eip=79a1669b esp=00b8cf80 ebp=00b8d03c iopl=0         nv up ei pl nz ac po nc
@@ -92,7 +97,7 @@ JP2KLib!JP2KDecOptInitToDefaults:
 00b8cfec  00002054 00000000 00b8d00c 75e20647
 ```
 
-From here, we move on to `JP2KImageInitDecoderEx`, which still takes in 5 arguments, and with windbg we can easily see that it took in 2 return values that we got earlier:
+From here, we move on to `JP2KImageInitDecoderEx`, which still took in 5 arguments, and with windbg we can easily see that it took in 2 of the return values that we got earlier:
 ```
 eax=79a150b0 ebx=240eda10 ecx=240a3948 edx=00000000 esi=7a3d8da0 edi=2410a4c4
 eip=79a150b0 esp=00b8cf54 ebp=00b8d040 iopl=0         nv up ei pl nz ac po nc
@@ -110,15 +115,17 @@ JP2KLib!JP2KImageInitDecoderEx:
 00b8cfc4  154a0000 1e71d298 00b8d0cc 79e71800
 ```
 
-To save time and space, `240ea4b8` was the return value from `JP2KImageCreate`, followed by 2 unknown structs, `240ee4f0` was the return value from `JP2KDecOptCreate` (which you can see from above actually), followed by a last unknown struct. That's right, this function had changed since the article I was referring to was written, so it no longer took in the return value of `JP2KGetMemObjEx` as its last argument, even though `JP2KGetMemObjEx` was still called in the correct order (and a lot of times too!). Weird, but we could still move on. For now, I used a placeholder for the last argument and followed what the article did to also arrive at the same conclusion: the second argument was a pointer to a file stream object and the third argument was a struct of functions that would be carried out on the second argument. Hence, I also had to create my own file object and file stream functions to pass into this function:
+In order on the stack, `240ea4b8` was the return value from `JP2KImageCreate`, followed by 2 unknown structs, `240ee4f0` was the return value from `JP2KDecOptCreate`, followed by a last unknown struct. That's right, this function had changed since the article I was referring to was written, so it no longer took in the return value of `JP2KGetMemObjEx` as its last argument, even though `JP2KGetMemObjEx` was still called in the correct order (and a lot of times too). Weird, but we could still move on. For now, I used a placeholder for the last argument and followed what the article did to also arrive at the same conclusion: the second argument was a pointer to a file stream object and the third argument was a struct of functions that would be carried out on the second argument. Hence, I also had to create my own file object and file stream functions to pass into this function:
 ```c
 typedef struct {
   FILE *fileptr;
 } file_obj_t;
 ```
 
-It was just a simple struct that took in 1 `FILE*` as its only variable. To save space and clutter, I will not be showing every single function that I created, but the filestream functions were something like these:<br>
-is_readable:
+It was just a simple struct that took in `FILE*` as its only variable. To save space and clutter, I will not be showing every single function that I created, but the filestream functions were something like these:
+
+
+`is_readable`:
 ```c
 int file_obj_is_readable(const file_obj_t *file) {
   printf("file_obj_is_readable called\n");
@@ -126,7 +133,7 @@ int file_obj_is_readable(const file_obj_t *file) {
 }
 ```
 
-write:
+`write`:
 ```c
 int file_obj_write(void* fileptr, unsigned char *data, int param2) {
   printf("file_obj_write called with params fileptr=%p, data=%p, param2=%d\n", fileptr, data, param2);
@@ -191,7 +198,7 @@ if(ret != 0)
   printf("failed to decode.\n");
 ```
 
-I also made sure to add in the relevant destroy functions to destroy all data if `JP2KImageInitDecoderEx` failed to decode to prevent memory leaks. After running the new harness (a lot of output has been truncated with "..." as they were printed by the wrapper functions "nop4 (malloc wrapper) called: ....." or file stream functions "file_obj_write called" and they were called a lot), we could confirm that it was working:
+I also made sure to add in the relevant destroy functions to destroy all data if `JP2KImageInitDecoderEx` failed to decode to prevent memory leaks. After running the new harness, we could confirm that it was working:
 ```
 pointer address of JP2KImageInitDecoderEx: 684D50B0
 file "sample1.jp2" initiated
@@ -215,9 +222,10 @@ file_obj_is_writeable called
 JP2KImageInitDecoderEx: ret = 0
 ```
 
-Huzzah, it returns 0! We can now move on. This took waaaaay longer than I would've hoped.
-> Common error return values that I got:<br>
-> 17: This meant that the input image was not a valid jp2 image, or was not a jp2 image at all.<br>
+It returned 0! We can now move on. This took waaaaay longer than I would've hoped.
+> Common error return values that I got:
+> 
+> 17: This meant that the input image was not a valid jp2 image, or was not a jp2 image at all.
 > 26: This meant that something went wrong in the process of decoding the image. Something went wrong with one or more of the file stream functions.
 
 Anecdote: I was tearing my hair out because `JP2KImageInitDecoderEx` kept failing for me even though I felt I had already implemented everything correctly, but it turned out that for certain file stream functions, the _file stream pointer itself_ was passed directly into them instead of just the _custom file stream object_.
@@ -242,7 +250,7 @@ printf("JP2KImageDecodeTileInterleaved called with params max_res=%d: ret = %d\n
 After running it once, it ran successfully, so I also called `JP2KImageDataDestroy`, `JP2KImageDestroy`, and `JP2KDecOptDestroy` at the end to prevent memory leaks. However...
 
 ## The Work was Not Done
-Because the library had changed over the years, when I tried running my harness in winafl, I had a suspiciously low stability (<80%) and also suspiciously low amount of paths (it never reached >300!!). This meant that I was likely not hitting all the correct parsing functions, so I had to go through slowly to find out what was wrong. I realized 2 main things:
+Because the library had changed over the years, when I tried running my harness in winafl I had a suspiciously low stability (<80%) and also suspiciously low amount of paths (it never reached >300). This meant that I was likely not hitting all the correct parsing functions, so I had to go through slowly to find out what was wrong. I realized 2 main things:
 
 1. When running through windbg, `JP2KImageDecodeTileInterleaved` ALWAYS returned 0, but mine would always return 8.
 2. nop0 was called at the end of `JP2KImageDecodeTileInterleaved`, and even though the article mentioned nothing about implementing that, after setting a breakpoint in windbg it turned out that nop0 was likely an important parsing function as it eventually lead to multiple calls of `CopyRect` and it seemed to call many important subroutines in IDA as well.
