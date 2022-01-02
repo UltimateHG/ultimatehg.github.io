@@ -18,6 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "caniuse-lite": "^1.0.30001295",
     "ejs": "^2.6.1",
     "highlight.js": "^9.18.5",
     "katex": "^0.10.2",
