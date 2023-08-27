@@ -319,7 +319,7 @@ There is a `win()` function at `0x401176`. The `win()` function will give us the
 
 ![](https://i.ibb.co/17QT33S/wheregotshell5.png)
 
-Ok. Now we have the pieces in place. We can see earlier in the `main()` function that a final `puts("Okay, exiting now...\n");` at the end of the function before it exits. This means theoretically we could use the 2 inputs to overwrite `puts()` to the address of `win()` on the GOT, then as the program exits `win()` would be called. Let's try out our theory:
+Ok. Now we have the pieces in place. We can see earlier in the `main()` function that a final `puts("Okay, exiting now...\n");` is called at the end before the program exits. This means theoretically we could use the 2 inputs to overwrite `puts()` in the GOT with the address of `win()`, then as the program exits, `win()` would be called. Let's try out our theory:
 ```py
 #!usr/bin/env python
 from pwn import *
