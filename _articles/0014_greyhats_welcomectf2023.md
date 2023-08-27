@@ -269,7 +269,9 @@ char* name = get_name();
 printf("Goodbye %s!\n", name);
 ```
 Nice, let's try something on the challenge host first.
+
 ![](https://i.ibb.co/CHRTSfH/filelen1.png)
+
 Ok so we can dump `flag.txt` onto the heap. since the variable `size` is passed to `read()`, we will just input, say, 100. And then we will pass an input with terminating nullbyte, and let the `printf()` sled run its way through.
 It is also worthy to note that there is another way that the heap would be leaked by `read()` as explained quite well by [Naetw's](https://github.com/Naetw/CTF-pwn-tips) amazing cheatsheet on pwn challenges:
 ![](https://i.ibb.co/d7LTSVP/filelen2.png)
