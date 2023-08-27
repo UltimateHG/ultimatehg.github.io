@@ -1,58 +1,49 @@
 /* eslint-disable no-console */
 
-import { exec } from 'child_process';
-import Watcher from 'watcher';
+import * as fs from 'fs';
+import * as path from 'path';
 
-import PagePublisher from '../services/PagePublisher';
 import ArticlePublisher from '../services/ArticlePublisher';
+import ArticleMetaInfo from '../services/classes/ArticleMetaInfo';
+import WorkPublisher from '../services/WorkPublisher';
+import PagePublisher from '../services/PagePublisher';
 
-const DIST = './dist';
+function getArticleIdByFilename(filename: string) {
+  const originalPath: string = `${ArticlePublisher.ARTICLE_ORIGIN_PATH}/${filename}`;
+  const file: Buffer = fs.readFileSync(originalPath);
+  const metaInfo: ArticleMetaInfo = ArticlePublisher.extractMetaInfo(String(file));
 
-console.log('\x1b[36m%s\x1b[0m', 'Watch changes...');
+  return metaInfo.getId();
+}
 
-const templateWatcher = new Watcher('app/templates', { ignoreInitial: true });
-templateWatcher.on('all', (_, path) => {
-  console.log(path);
-  const match = path.match(/([^/]+)\.ejs/);
-  if (match) {
-    const filename = match[1];
-    PagePublisher.publishPage(filename);
-    exec(`cp -rf ./app/public/* ${DIST}/`, (err, __, stderr) => {
-      if (err) {
-        console.log(`error: ${err.message}`);
-      } else if (stderr) {
-        console.log(`stderr: ${stderr}`);
-      }
-    });
-  }
+console.log('\x1b[36m%s\x1b[0m', 'The watcher is running:');
+
+fs.watch(`${__dirname}/../_articles`, (event, filename: string) => {
+  const id = getArticleIdByFilename(filename);
+  console.log(`${new Date()}: ${filename} #${id}`);
+  ArticlePublisher.publishArticles(id);
 });
 
-const styleWatcher = new Watcher('app/styles', { ignoreInitial: true });
-styleWatcher.on('all', () => {
-  exec(`cp -rf ./app/styles/* ${DIST}/styles/`, (err, _, stderr) => {
-    if (err) {
-      throw err;
-    } else if (stderr) {
-      throw stderr;
-    }
-  });
+fs.watch(`${__dirname}/../app/templates`, (event, filename: string) => {
+  console.log(`${new Date()}: ${filename}`);
 
-  exec(`cleancss --batch --batch-suffix '' ${DIST}/styles/*.css`, (err, _, stderr) => {
-    if (err) {
-      throw err;
-    } else if (stderr) {
-      throw stderr;
-    }
-  });
-});
-
-const articleWatcher = new Watcher('_articles', { ignoreInitial: true });
-articleWatcher.on('all', (_, path) => {
-  console.log(path);
-  const match = path.match(/([^/]+)\.md$/);
-  if (match) {
-    const filename = `${match[1]}.md`;
-    const { article: { id } } = ArticlePublisher.getArticleByFilename(filename);
-    ArticlePublisher.publishArticles(id);
+  switch (path.parse(filename).name) {
+    case 'index':
+      PagePublisher.publishIndex();
+      break;
+    case 'navigation':
+      PagePublisher.publishNavigation();
+      break;
+    case 'about':
+      PagePublisher.publishAbout();
+      break;
+    case 'articles':
+      ArticlePublisher.publishArticles();
+      break;
+    case 'works':
+      WorkPublisher.publishAllWorks();
+      break;
+    default:
+      console.log('Unknown page');
   }
 });

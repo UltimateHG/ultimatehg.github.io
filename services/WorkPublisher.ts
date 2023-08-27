@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
-/* eslint-disable import/no-extraneous-dependencies */
 
-import MarkdownIt from 'markdown-it';
+import * as MarkdownIt from 'markdown-it';
 import * as ejs from 'ejs';
 import * as fs from 'fs';
 import * as path from 'path';
