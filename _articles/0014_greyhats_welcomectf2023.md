@@ -59,12 +59,13 @@ int main() {
 }
 ```
 
-It's immediately obvious that the vulnerable function here is `gets(buf)` which doesn't do any checks, allowing us to attack it via buffer overflow. The size of the buffer is 32 bytes. Honestly speaking, I don't think there's much to go into for this one because the moment I opened up GDB to test out overflowing due to the 1 byte overflow the while loop was broken out of and the code reached the portion
+It's immediately obvious that the vulnerable function here is `gets(buf)` which doesn't do any checks, allowing us to attack it via buffer overflow. The size of the buffer is 32 bytes. Honestly speaking, I don't think there's much to go into for this one because the moment I opened up GDB to test out a basic overflow `'a'*33`, it caused the while loop to break due to the 1 byte overflow and the code reached this portion:
 ```c
 printf("You win! How did you even %d points?!?\n", score);
 printf("As promised, here is the flag:\n");
 printf(FLAG);
 ```
+
 I tested the same solution on the host and it gave me the flag.
 ```py
 #!usr/bin/env python
@@ -240,6 +241,7 @@ void measure(const char* name) {
 	}
 }
 ```
+
 Simple enough. Open file with name matching provided string with read permissions, seek through the file and return the length of the file. We could theoretically ask for the length of, say, `flag.txt`, which would dump all its contents on the heap. The heap is never properly cleared either. We will get back to this later.
 There's one more function that we're interested in, which is `get_name()`, and it is as such:
 ```c
@@ -384,6 +386,7 @@ void sort(num* arr, num len) {
     }
 }
 ```
+
 It loops until `<= len`, instead of `< len`. But in our `main()` function when `sort()` is called, the following is passed to `sort()`.
 ```c++
 sort(ARR, MAXSZ);
