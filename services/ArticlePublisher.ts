@@ -1,17 +1,21 @@
 /* eslint-disable no-console */
+/* eslint-disable import/no-extraneous-dependencies */
 
 import * as ejs from 'ejs';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as MarkdownIt from 'markdown-it';
+import MarkdownIt from 'markdown-it';
 import * as katex from 'katex';
-import * as highlightJs from 'highlight.js';
-import * as mdFootnote from 'markdown-it-footnote';
-import * as mdTex from 'markdown-it-texmath';
-import * as mdAnchor from 'markdown-it-anchor';
-import * as mdTableOfContents from 'markdown-it-table-of-contents';
-import * as mdContainer from 'markdown-it-container';
+import highlightJs from 'highlight.js';
+import mdFootnote from 'markdown-it-footnote';
+import mdTex from 'markdown-it-texmath';
+import mdAnchor from 'markdown-it-anchor';
+import mdTableOfContents from 'markdown-it-table-of-contents';
+import mdContainer from 'markdown-it-container';
+import mdInlineComment from 'markdown-it-inline-comments';
+import mdLazyImage from 'markdown-it-image-lazy-loading';
+import mdMermaid from 'markdown-it-mermaid';
 
 import PagePublisher from './PagePublisher';
 import ArticleMetaInfo from './classes/ArticleMetaInfo';
@@ -19,10 +23,10 @@ import Article from './classes/Article';
 import ArticleModel from './models/ArticleModel';
 
 class ArticlePublisher {
-  // A path of the directory containing the markdown article files.
+  // A path of the directory containing markdown article files.
   static ARTICLE_ORIGIN_PATH: string = path.join(__dirname, '../_articles');
 
-  // A path of the directory containing the HTML article files.
+  // A path of the directory containing HTML article files.
   static ARTICLE_DIST_PATH: string = path.join(__dirname, '../app/public/article');
 
   // A path of the article template file.
@@ -38,13 +42,15 @@ class ArticlePublisher {
     linkify: true,
     typographer: true,
     quotes: '“”‘’',
-    highlight: (str, lang) => {
-      if (lang && highlightJs.getLanguage(lang)) {
-        return `<pre class="hljs"><code>${highlightJs.highlight(lang, str, true).value}</code></pre>`;
+    highlight: (str, language) => {
+      if (language && highlightJs.getLanguage(language)) {
+        return `<pre class="hljs"><code>${highlightJs.highlight(str, { language }).value}</code></pre>`;
       }
       return `<pre class="hljs"><code>${ArticlePublisher.md.utils.escapeHtml(str)}</code></pre>`;
     },
   }).use(mdFootnote)
+    .use(mdInlineComment)
+    .use(mdMermaid)
     .use(mdTex.use(katex), {
       delimiters: 'gitlab',
     })
@@ -63,9 +69,12 @@ class ArticlePublisher {
         }
         return '</details>\n';
       },
+    })
+    .use(mdLazyImage, {
+      decoding: true,
+      image_size: true,
+      base_path: path.join(__dirname, '../'),
     });
-
-  static config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json')).toString());
 
   /**
    * Extracts content excluding front matter block.
@@ -88,16 +97,10 @@ class ArticlePublisher {
    *
    * @param filename - An article filename.
    */
-  private static getArticleByFilename(filename: string) {
-    let mdContent = String(fs.readFileSync(`${this.ARTICLE_ORIGIN_PATH}/${filename}`));
-
-    // Adds table of contents to article.
-    const { tableOfContents } = PagePublisher.config.article;
-    if (tableOfContents) {
-      mdContent = `::: toggle(Table of Contents)\n[[toc]]\n:::\n${mdContent}`;
-    }
-
-    const htmlContent: string = this.md.render(this.extractContent(mdContent));
+  public static getArticleByFilename(filename: string) {
+    const mdContent = String(fs.readFileSync(`${this.ARTICLE_ORIGIN_PATH}/${filename}`));
+    const mdContentWithToc = `::: toggle(Table of Contents)\n[[toc]]\n:::\n${mdContent}`;
+    const htmlContent: string = this.md.render(this.extractContent(mdContentWithToc));
     const metaInfo: ArticleMetaInfo = this.extractMetaInfo(String(mdContent));
 
     return new Article({
@@ -191,7 +194,8 @@ class ArticlePublisher {
       return article;
     });
 
-    PagePublisher.publishArticles(distArticles);
+    const sortedDistArticles: ArticleModel[] = distArticles.sort((a, b) => a.id - b.id);
+    PagePublisher.publishArticles(sortedDistArticles);
   }
 }
 
