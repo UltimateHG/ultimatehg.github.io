@@ -4,16 +4,16 @@
   "description": "A static blog generator for people who want to start a blog quickly",
   "repository": {
     "type": "git",
-<<<<<<< HEAD
     "url": "https://github.com/parksb/handmade-blog.git"
   },
   "main": "index.js",
   "scripts": {
-    "start": "live-server ./dist --no-browser",
+    "start": "npm run build:file && live-server ./app/public/ --no-browser",
     "watch": "tsx ./tools/watch.ts",
     "publish": "tsx ./tools/publish.ts",
     "build": "bash ./tools/build.sh",
-    "deploy": "bash ./tools/deploy.sh"
+    "deploy": "bash ./tools/deploy.sh",
+    "build:file": "mkdir -p ./app/public/styles && cp -rf ./app/styles/* ./app/public/styles/ && mkdir -p ./app/public/assets && cp -rf ./app/assets/* ./app/public/assets/ && mkdir -p ./app/public/images && cp -rf ./images/* ./app/public/images/"
   },
   "author": "parksb",
   "license": "MIT",
@@ -55,53 +55,5 @@
     "tsx": "^3.12.7",
     "typescript": "^4.6",
     "watcher": "^2.2.2"
-=======
-    "url": "https://github.com/ParkSB/handmade-blog.git"
-  },
-  "main": "index.js",
-  "scripts": {
-    "start": "bash ./tools/start.sh",
-    "build": "bash ./tools/build.sh",
-    "watch": "ts-node ./tools/watch.ts",
-    "publish": "ts-node ./tools/publish.ts",
-    "deploy": "bash ./tools/deploy.sh",
-    "test": "mocha -r ts-node/register ./services/tests/**/*.test.ts"
-  },
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "caniuse-lite": "^1.0.30001295",
-    "ejs": "^2.6.1",
-    "highlight.js": "^9.18.5",
-    "katex": "^0.10.2",
-    "markdown-it": "^8.4.2",
-    "markdown-it-anchor": "^5.3.0",
-    "markdown-it-container": "^3.0.0",
-    "markdown-it-footnote": "^3.0.1",
-    "markdown-it-table-of-contents": "^0.4.4",
-    "markdown-it-texmath": "^0.5.5"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.12.10",
-    "@babel/preset-env": "^7.12.11",
-    "@types/chai": "^4.2.14",
-    "@types/ejs": "^2.6.3",
-    "@types/highlight.js": "^9.12.3",
-    "@types/markdown-it": "0.0.7",
-    "@types/mocha": "^5.2.6",
-    "@types/node": "^11.15.43",
-    "@typescript-eslint/eslint-plugin": "^2.13.0",
-    "@typescript-eslint/parser": "^2.13.0",
-    "chai": "^4.2.0",
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-typescript": "^6.3.1",
-    "eslint-plugin-import": "^2.22.1",
-    "mocha": "^8.2.1",
-    "node-sass": "^4.14.1",
-    "parcel-bundler": "^1.12.4",
-    "sass": "^1.32.0",
-    "ts-node": "^8.0.3",
-    "typescript": "^3.3.3333"
->>>>>>> parent of c287db2... Updated main repo version
   }
 }

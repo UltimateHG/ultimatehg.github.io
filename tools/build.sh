@@ -35,12 +35,36 @@ echo -e "\n${GREEN}Reset distribution directory...${WHITE}"
 echo "> rm -r ${DIST}/*"
 rm -r $DIST/*
 
-echo -e "\n${GREEN}Copy static files to distribution directory...${WHITE}"
+echo -e "> mkdir ${DIST}/styles\n"
+mkdir $DIST/styles
+echo -e "> mkdir ${DIST}/assets\n"
+mkdir $DIST/assets
+echo -e "> mkdir ${DIST}/images\n"
+mkdir $DIST/images
+
+echo -e "\n${GREEN}Copy files to distribution directory...${WHITE}"
 echo "> cp -r ./app/static/* ${DIST}/"
 cp -r ./app/static/* $DIST/
+echo "> cp -r ./app/public/* ${DIST}/"
+cp -r ./app/public/* $DIST/
+echo "> cp -r ./app/styles/* ${DIST}/styles/"
+cp -r ./app/styles/* $DIST/styles/
+echo "> cp -r ./app/assets/* ${DIST}/assets/"
+cp -r ./app/assets/* $DIST/assets/
+echo "> cp -r ./images/* ${DIST}/images/"
+cp -r ./images/* $DIST/images/
 
-echo -e "\n${GREEN}Run parcel...${WHITE}"
-echo -e "> parcel build ./app/public/index.html -d ${DIST}\n"
-parcel build ./app/public/index.html -d $DIST
+echo -e "\n${GREEN}Minify css files...${WHITE}"
+cleancss --batch --batch-suffix '' $DIST/styles/*.css
+
+echo -e "\n${GREEN}Minify html files...${WHITE}"
+html-minifier --input-dir $DIST --output-dir $DIST --file-ext html --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype
+
+
+if test -f "./CNAME"; then
+    echo -e "> Found a CNAME File! Bringing the CNAME over"
+    cp -r ./CNAME ${DIST}/CNAME
+fi
 
 echo -e "\n${CYAN}Done!${WHITE}"
+
