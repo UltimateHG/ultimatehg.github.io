@@ -1,20 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
   <meta charset="UTF-8" />
-  <title>Articles</title>
+  <title><%- blogTitle %></title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, user-scalable=no">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
-  <link rel="shortcut icon" href="./assets/favicon.ico" type="image/x-icon">
-  <link rel="preload" href="./styles/articles.css" as="style">
-  <link rel="stylesheet" href="./styles/articles.css">
+  <link rel="icon" href="/../assets/pencil.png" type="image/x-icon">
+  <link rel="stylesheet" href="../src/scss/init.scss">
+  <link rel="stylesheet" href="../src/scss/articles.scss">
 </head>
+
 <body>
   <header id="top-container" role="navigation">
-    <%- include(process.cwd() + '/app/templates/navigation'); %>
   </header>
+
   <main id="main-container">
     <section id="articles-container">
       <ul>
@@ -37,5 +39,8 @@
       </ul>
     </section>
   </main>
+
+  <script defer src="../src/ts/init.ts"></script>
 </body>
+
 </html>
