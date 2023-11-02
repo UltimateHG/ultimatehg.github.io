@@ -8,7 +8,7 @@ tags: "ecsc, ecsc2023, c++, pwn, ctf"
 
 ## Foreword
 
-I participated in ECSC 2023 as a guest team as part of Team Singapore with NUS Greyhats. The competition was quite chaotic due to many factors but in the end it was still a fun competitions thanks to all the interesting compeititors. This was a live-in-venue competition in Hamar, Norway so I was lucky to get a free holiday in the middle of my school term as well :)
+I participated in ECSC 2023 as a guest team as part of Team Singapore with NUS Greyhats. The competition was quite chaotic due to many factors but in the end it was still a fun competitions thanks to all the interesting compeititors. This was a live on-site competition in Hamar, Norway so I was lucky enough to get a free holiday in the middle of my school term as well :)
 
 I mainly did the pwn challenges relating to the stack because I'm not very good at heap pwn, so I left it up to my teammate.
 
@@ -78,7 +78,7 @@ int forge_sword()
 }
 ```
 
-`buf` is initialized with size `0x30` but at the end before `return`, `read(0, buf, 0x120uLL)` allows a `0x120uLL` size read into the buffer. We run `checksec` against the binary and find out that ASLR is disabled. This means we can attempt a ret2libc attack.
+`buf` is initialized with size `0x30` but at the end before `return`, `read(0, buf, 0x120uLL)` allows a `0x120uLL` size read into the buffer. This means we can attempt a ret2libc attack.
 
 The offset for the bof would be `0x30` (buffer size) + `0x8` (`$rbp`) which gives us `0x38`. We pad `0x38` and do a ret2libc attack, building a ROP chain to leak the lilbc addresses. We then redo the same thing but with the leaked libc offset to find `system` and `/bin/sh`. Build and execute the next ROP chain to pop shell.
 
