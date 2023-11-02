@@ -66,7 +66,7 @@ Yep, that's the whole binary. Honestly it felt like a mystery that they put this
 
 We can see that `char buf[32]` is declared with size 32 but `read(0, buf, 0x100uLL);` reads `0x100` bytes into `buf`. Textbook buffer overflow.
 
-Since this challenge is Full RELRO, we cannot directly execute shellcode, hence we will do ret2libc.
+Since this challenge is Full RELRO and NX enabled, we cannot directly execute shellcode nor overwrite GOT, hence we will do ret2libc.
 
 Leak `write` address and return to main, calculate libc base, then perform ROP chain to pop shell.
 ```py
