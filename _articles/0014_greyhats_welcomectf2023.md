@@ -242,7 +242,7 @@ void measure(const char* name) {
 }
 ```
 
-Simple enough. Open file with name matching provided string with read permissions, seek through the file and return the length of the file. We could theoretically ask for the length of, say, `flag.txt`, which would dump all its contents on the heap. The heap is never properly cleared either. We will get back to this later.
+Simple enough. Open file with name matching provided string with read permissions, seek through the file and return the length of the file. We could theoretically ask for the length of, say, `flag.txt`, which would dump all its contents on the heap. The heap is never actually properly cleared due to it needing to be efficient. We will get back to this later.
 There's one more function that we're interested in, which is `get_name()`, and it is as such:
 ```c
 char* get_name() {
