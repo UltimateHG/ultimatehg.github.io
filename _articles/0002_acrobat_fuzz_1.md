@@ -170,6 +170,6 @@ JP2KDecOptCreate: ret = 4
 As we can see, the functions have been successfully loaded. There was still one thing I could not figure out, and that was the return type of `JP2KDecOptCreate()`. As it seemed, the article used a self-defined datatype `image_t` which I assumed was a bitstream containing pixel data (I could be wrong), which I hadn't yet figured out how to define. As I mentioned, I am basically completely new to C so it actually took be embarassingly long to get hold of something so simple. And this will actually be it for this post. I will update more as I finish up the harness and start running the fuzzer.
 
 # Final Words
-Thank you for sitting through this and bearing with me (and my amateur writeup). I am new to C, so if I made any serious conceptual errors or if there's anything you would like to correct me on or would like me to remove, feel free to email me at `yitiancw02@gmail.com` and I would make the necessary changes. Just learning something seemingly this simple still broadened my knowledge on this subject, and security research never ceases to amaze me. I will continue to research into PDF fuzzing and update as it goes along.
+Thank you for sitting through this and bearing with me (and my amateur writeup). I am new to C, so please forgive me if I made any conceptual errors. Just learning something seemingly this simple still broadened my knowledge on this subject, and security research never ceases to amaze me. I will continue to research into PDF fuzzing and update as it goes along.
 
 Thanks for reading.
