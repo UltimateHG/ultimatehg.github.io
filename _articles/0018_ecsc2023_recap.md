@@ -18,7 +18,7 @@ NUS Greyhats represented Singapore as a guest team appearing at ECSC 2023, along
 
 # Day 0
 
-![View from the airport in Oslo, Norway (taken the following morning)](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.08.40_fa18e88d.jpg)
+![](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.08.40_fa18e88d.jpg "View from the airport in Oslo, Norway (taken the following morning)")
 
 Our flight brought us to Norway about 10 hours early and we landed near midnight a day before the competition, which meant we had to book an extra night of stay at an airport hotel. This was the first blast of cold that hit us since we had been experiencing ever increasing temperatures in Singapore, and it felt pretty amazing. We pretty much just hurried to our hotels and prepared for the actual Day 0 of the competition, where there were some pre-competition events lined up for us.
 
@@ -26,7 +26,7 @@ We set off for Hamar the first thing in the morning from the airport. We met the
 
 # Day 1
 
-![Amazingly large venue, looks grand even from the outside](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.07.57_873a2024.jpg)
+![](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.07.57_873a2024.jpg "Amazingly large venue, looks grand even from the outside")
 
 Day 1 was a jeopardy-style CTF where every team competes on the leaderboard by solving various challenges in various categories. If I have to be honest, I was quite disappointed with Day 1 as my area of expertise (if you could call it that) did not have much interesting challenges available and were mostly very straight-forward, so I spent the rest of the competition trying to help out with the other challenges (without really getting anywhere). This was the day we saw Denmark, Germany and Netherlands full clear the challenges which was honestly pretty amazing. We had catered food (cursed cold burritos) for lunch as well as dinner (hotel food, thank god) and the rest of the night after the competition was spent getting ready for Day 2, which would feature an Attack/Defence competition.
 
@@ -50,7 +50,7 @@ We did not expect much as the other guest teams were also extremely strong and t
 
 After this, the participants held a massive impromptu afterparty in the hotel (with lots of alcohol) and we got the chance to go around and connect with various cybersecurity students and professionals. We were actually slightly taken aback because we were so used to Singaporean males having to undergo 2 years of national service that we forgot the participants we were facing off, around the same age as us, were actually mostly already working.
 
-![Fancy looking appetizer](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.07.18_07c41d66.jpg)
+![](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.07.18_07c41d66.jpg "Fancy looking appetizer")
 
 ## Afterword
 
