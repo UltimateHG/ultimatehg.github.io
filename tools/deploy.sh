@@ -41,6 +41,7 @@ if [[ $(git status -s) == "" ]]; then
   echo -e "${WHITE}> git checkout .gitignore"
   git checkout .gitignore
 else
+  echo -e "$(git status -s)\n"
   echo -e "\n${RED}Failed to deploy: Need clean working directory to deploy.\n"
   exit 1
 fi
