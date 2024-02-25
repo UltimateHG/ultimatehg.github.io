@@ -10,6 +10,4 @@ server
 css
 public
 dist
-_articles
-_docs
-_works
+_articles/0019_gcc2024_recap.md
