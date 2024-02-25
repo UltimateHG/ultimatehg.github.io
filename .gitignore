@@ -10,3 +10,6 @@ server
 css
 public
 dist
+_articles
+_docs
+_works
