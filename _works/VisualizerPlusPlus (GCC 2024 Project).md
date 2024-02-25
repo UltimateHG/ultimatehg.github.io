@@ -6,8 +6,6 @@ thumbnail: "https://static.maltego.com/cdn/Maltego%20Branding/Maltego%20logo%20-
 
 Link to repo: https://github.com/UltimateHG/VisualizerPlusPlus
 
-# Visualizer++: A Maltego Plugin
-
 ## Foreword
 
 This was a project done within a week during Global Cybersecurity Camp 2024. It will be FOSS and updates are not guaranteed.
