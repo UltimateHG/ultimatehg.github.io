@@ -182,6 +182,6 @@ p.interactive()
 
 The most fun challenge out of all the rest because of the different layers that went into this, from leaking canary to getting a libc address, before finally sending the final payload to pop shell. Honestly I think it would've been easier if I had stronger knowledge on tcache and bins, but nonetheless it was kinda fun.
 
-Throughout the competition, huge thanks to all my teammates for working tirelessly and especially [`enigmatrix`](https://enigmatrix.me) for his guidance with solving the pwn challenges.
+Throughout the competition, huge thanks to all my teammates for working tirelessly and especially [enigmatrix](https://enigmatrix.me) for his guidance with solving the pwn challenges.
 
 Thanks for reading!

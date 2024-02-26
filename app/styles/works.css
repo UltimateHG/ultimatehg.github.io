@@ -19,14 +19,14 @@
 
 #works-container .works-content:hover,
 #works-container .works-content:focus {
-  background-color: black;
-  color: white;
+  background-color: #E4E5E6;
+  color: #18191A;
 }
 
 #works-container .works-content img {
   width: 100%;
   height: 100%;
-  border: 1px solid black;
+  border: 1px solid #E4E5E6;
   margin-bottom: 5px;
 }
 
