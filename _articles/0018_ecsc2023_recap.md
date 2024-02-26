@@ -1,6 +1,6 @@
 ---
 id: 18
-title: "ECSC 2023: Recap"
+title: "[Blog] ECSC 2023: Recap"
 subtitle: "A blog post on my experience"
 date: "2023.11.03"
 tags: "ecsc, ecsc2023, ctf"
@@ -10,13 +10,13 @@ tags: "ecsc, ecsc2023, ctf"
 
 Over the past 2 weeks (23-30 October), I was fortunate enough to represent Singapore at ECSC 2023 together with 9 other NUS Greyhats members. We got to go overseas as this was an on-site CTF and NUS School of Computing was generous enough to grant us a (mostly) sponsored trip. It was quite an experience for me as I had truthfully never done Attack/Defence CTFs before and this was only my second time in Europe as well.
 
-# ECSC in Hamar, Norway
+# ECSC in Hamar, Norway 🇳🇴
 
 ECSC is one of the biggest cybersecurity competions in europe where top cyber talents from each participating country will meet to network, collaborate and finally compete against each other. Contestants are challenged in solving security related tasks from domains such as web security, mobile security, crypto puzzles, reverse engineering, and forensics and in the process collect points for solving them.
 
 NUS Greyhats represented Singapore as a guest team appearing at ECSC 2023, alongside countries like Canada and United States. There were a total of 34 teams present at ECSC 2023 including all guest teams and it was a sight to behold as every team gathered in the Vikingskipet (Hamar Olympic Hall) to battle it out with each other over 3 days of interesting and slightly excruciating challenges. We got a chance to tour Hamar as well as Oslo in our time in Norway and try out the different local flavours, all while meeting and connecting with all the talented young cyber talents from the participating European countries. In particular, I felt that team Netherlands, Germany, Denmark and Switzerland stood out to me as they were constantly on the top of the leaderboards during the competition. Everyone present was extremely talented and I’m definitely glad that I got to meet them.
 
-# Day 0
+## Day 0
 
 ![](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.08.40_fa18e88d.jpg "View from the airport in Oslo, Norway (taken the following morning)")
 _View from the airport in Oslo, Norway (taken the following morning)_
@@ -25,14 +25,14 @@ Our flight brought us to Norway about 10 hours early and we landed near midnight
 
 We set off for Hamar the first thing in the morning from the airport. We met the Danish national team on our way there (they were taking the same train as us!) and had some small talk with them. After reaching Hamar, we checked into the hotel that was arranged for us (but not sponsored by ECSC 😞) and had some time to look around before reporting to the competition venue in the evening for the opening event. We briefly explored the area in Hamar around our hotel and scrambled to buy some extra adapters for our use during the competition. The opening event was quite interesting, watching all the various teams’ introduction videos and also gave us an interesting (and rather hilarious too, thanks to all the teams’ amazing videos) look into European banter that I’ve only ever read online and never seen in person. Afterwards it was back to our hotel rooms and getting ready for the competition with mostly just some mental prep.
 
-# Day 1
+## Day 1
 
 ![](https://bpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/f/16782/files/2023/10/WhatsApp-Image-2023-11-06-at-03.07.57_873a2024.jpg "Amazingly large venue, looks grand even from the outside")
 _Amazingly large venue, looks grand even from the outside_
 
 Day 1 was a jeopardy-style CTF where every team competes on the leaderboard by solving various challenges in various categories. If I have to be honest, I was quite disappointed with Day 1 as my area of expertise (if you could call it that) did not have much interesting challenges available and were mostly very straight-forward, so I spent the rest of the competition trying to help out with the other challenges (without really getting anywhere). This was the day we saw Denmark, Germany and Netherlands full clear the challenges which was honestly pretty amazing. We had catered food (cursed cold burritos) for lunch as well as dinner (hotel food, thank god) and the rest of the night after the competition was spent getting ready for Day 2, which would feature an Attack/Defence competition.
 
-# Day 2
+## Day 2
 
 Day 2 was Attack/Defence where every team had the same few vulnerable services hosted on their respective teams’ provided servers. The goal of Attack/Defence is to patch your own services while exploiting other teams’ services to retrieve the flag, which is planted into every teams’ service per tick (~3 mins) by the organizers.
 
@@ -44,7 +44,7 @@ However, thanks to the participants, the day was still interesting as everyone u
 
 This was a first for me for Attack/Defence competitions and I’m glad that while it wasn’t the best experience in the sense of the competition, it was at least a fun one.
 
-# Day 3
+## Day 3
 
 The final day of the competition was also, like Day 1, a jeopardy-style CTF. This day featured some interesting challenges which was a relief and we set to work. We managed to do much better on this day and even achieved a top 10 on the overall leaderboard, 2nd place among the guest teams. Although there were still some hiccups, like one of the challenges basically being unattemptable for most of Day 3, it was still overall a fun day. After the competition ended, it was time to await for the results.
 
