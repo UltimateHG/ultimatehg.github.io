@@ -21,6 +21,17 @@
 #about-container a:hover,
 #about-container a:focus {
   text-decoration: none;
-  background-color: black;
-  color: white;
+  background-color: #E4E5E6;
+  color: #18191A;
+}
+
+#main-container code,
+#main-container code span {
+  font-family: 'Consolas', 'Monaco', 'Ubuntu Mono', 'Andale Mono', monospace;
+}
+
+#main-container p code,
+#main-container li code {
+  background-color: #363636;
+  padding: 0 5px 0 5px;
 }

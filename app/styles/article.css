@@ -20,7 +20,7 @@
 
 #article-date {
   font-size: 12px;
-  color: #767676;
+  color: #9e9e9e;
 }
 
 #article-content-container {
@@ -72,8 +72,8 @@
 }
 
 #article-navigation a:hover div {
-  background-color: black;
-  color: white;
+  background-color: #E4E5E6;
+  color: #18191A;
 }
 
 #article-list-button-container {
@@ -86,7 +86,7 @@
   display: table-cell;
   width: 90px;
   height: 90px;
-  border: 1px black solid;
+  border: 1px #E4E5E6 solid;
   border-radius: 100%;
   vertical-align: middle;
   text-align: center;
@@ -94,7 +94,7 @@
 }
 
 #article-list-button-container #article-list-button:hover {
-  background-color: black;
+  background-color: #152238;
 }
 
 #article-comments {
@@ -118,7 +118,7 @@
 
 #article-content-container h1 {
   font-size: 22px;
-  border-bottom: 1px black solid;
+  border-bottom: 1px #E4E5E6 solid;
   padding-bottom: 5px;
 }
 
@@ -165,8 +165,8 @@
 #article-content-container a:hover,
 #article-content-container a:focus {
   text-decoration: none;
-  background-color: black;
-  color: white;
+  background-color: #E4E5E6;
+  color: #18191A;
 }
 
 #article-content-container pre {
@@ -182,12 +182,12 @@
 
 #article-content-container p code,
 #article-content-container li code {
-  background-color: #EEEEEE;
+  background-color: #363636;
   padding: 0 5px 0 5px;
 }
 
 #article-content-container blockquote {
-  border-left: 3px #DFDFDF solid;
+  border-left: 3px #666666 solid;
   padding-left: 15px;
 }
 
@@ -205,7 +205,7 @@
 #article-content-container th,
 #article-content-container td {
   padding: 5px 10px 5px 10px;
-  border: 1px black solid;
+  border: 1px #E4E5E6 solid;
 }
 
 #article-content-container sup {
@@ -218,8 +218,8 @@
 }
 
 #article-content-container details[open=""] > summary {
-  background-color: black;
-  color: white;
+  background-color: #E4E5E6;
+  color: #18191A;
 }
 
 #article-content-container summary {
@@ -269,7 +269,7 @@
   margin-top: 30px;
   margin-bottom: 30px;
   border-top: 0;
-  border-bottom: 1px black solid;
+  border-bottom: 1px #E4E5E6 solid;
 }
 
 #article-content-container .footnotes > .footnotes-list {

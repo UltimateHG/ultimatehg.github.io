@@ -30,10 +30,12 @@
 body {
   margin: auto;
   padding: 20px 30px 50px 30px;
+  background-color: #18191A;
+  color: #E4E5E6;
 }
 
 a {
-  color: black;
+  color: #E4E5E6;
   text-decoration: none;
   cursor: pointer;
 }
@@ -68,12 +70,12 @@ a {
 
 #top-container .logo-link:hover,
 #top-container .logo-link:focus {
-  color: white;
-  text-shadow: 1px 1px 0 black, -1px 1px 0 black, -1px -1px 0 black, 1px -1px 0 black;
+  color: #3A3B3C;
+  text-shadow: 1px 1px 0 #E4E5E6, -1px 1px 0 #E4E5E6, -1px -1px 0 #E4E5E6, 1px -1px 0 #E4E5E6;
 }
 
 #top-container .info-link:hover,
 #top-container .info-link:focus {
-  color: white;
-  background-color: black;
+  color: #3A3B3C;
+  background-color: #E4E5E6;
 }
