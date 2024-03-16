@@ -1,7 +1,7 @@
 ---
 title: "My Bukkit Plugins"
 subtitle: "Because I was bored during COVID"
-thumbnail: "https://dummyimage.com/2022x626/000/fff.png&text=Bukkit Plugins"
+thumbnail: "https://dummyimage.com/2022x626/000/fff.png&text=BukkitPlugins"
 ---
 
 Link to repo: https://github.com/UltimateHG/Bukkit-Plugins
