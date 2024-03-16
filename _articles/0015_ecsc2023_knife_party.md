@@ -51,8 +51,7 @@ __int64 forge()
 }
 ```
 
-Testing the binary against inputs hints us that `forge_knife()` does nothing of value, `forge_bat()` and `forge_sword()` are the functions we are interested in. Both of the functions have a buffer overflow vulnerability when we check it in IDA. We focus on `forge_sword()`:
-
+Testing the binary against inputs hints us that `forge_knife()` does nothing of value, `forge_bat()` and `forge_sword()` are the functions we are interested in. Opening them up in IDA, we can see that both of the functions have a buffer overflow vulnerability. We focus on `forge_sword()`:
 ```c++
 int forge_sword()
 {

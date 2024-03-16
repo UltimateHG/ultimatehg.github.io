@@ -8,7 +8,7 @@ tags: "ecsc, ecsc2023, c, pwn, ctf"
 
 ## Foreword
 
-This challenge was honestly a mystery because it was released near the end of Day 1 yet it's a much easier pwn challenge than all the other challenges. It barely has any code and is just a straight forward buffer overflow ret2libc challenge.
+This challenge was released near the end of Day 1 yet it's a much easier pwn challenge than all the other challenges. It is just a straight forward buffer overflow ret2libc challenge.
 
 # Flux Capacitor
 
@@ -62,9 +62,9 @@ int __fastcall main(int argc, const char **argv, const char **envp)
 }
 ```
 
-Yep, that's the whole binary. Honestly it felt like a mystery that they put this in as a challenge in a competition as big as ECSC 2023, but I'm not complaining.
+Yep, that's the whole binary.
 
-We can see that `char buf[32]` is declared with size 32 but `read(0, buf, 0x100uLL);` reads `0x100` bytes into `buf`. Textbook buffer overflow.
+We can see that `char buf[32]` is declared with size 32 but `read(0, buf, 0x100uLL);` reads `0x100` bytes into `buf`.
 
 Since this challenge is Full RELRO and NX enabled, we cannot directly execute shellcode nor overwrite GOT, hence we will do ret2libc.
 
