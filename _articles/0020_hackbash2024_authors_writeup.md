@@ -688,7 +688,9 @@ I know it's definitely a lot to get your head wrapped around, but if you slowly 
 
 ## Extra Notes
 
-Firstly, for the `win+5` address, this is because `system()` actually requires a properly aligned stack in order to function properly. Since we overwrote our `$rbp` with a bogus value, when we first go into the function and it reaches the `push rbp` instruction, it will end up pushing our bogus `$rbp`, which we do not want. Hence, by calling `win+5`, we skip the `push rbp` instruction.
+Firstly, for the `win+5` address, this is because `system()` actually requires a properly aligned stack in order to function properly. Since we overwrote our `$rbp` with a bogus value, when we first go into the function and it reaches the `push rbp` instruction, it will end up pushing our bogus `$rbp`, which we do not want. If you attach a debugger to the application, you can see that it crashes at the `movaps` instruction. Usually, the program would naturally handle the stack alignment in its execution flow. However, since we are overwriting values in the stack and messing with the program, we overwrote the `$rbp` with our own bogus value, when the program jumps to the start of another function it tries to "return" our `$rsp` to the bogus `$rbp` (i.e. at the `push rbp` instruction), which causes it to be set to the bogus value. This causes the `$rsp` to be misaligned and hence when `movaps` uses our `$rsp` value it will end up faulting. Hence, by calling `win+5`, we skip the `push rbp` instruction and mitigate the problem.
+
+There are more information on the above in [here (instruction set reference)](https://www.felixcloutier.com/x86/movaps) and [here (explanation of `movaps` in the context of pwn)](https://ropemporium.com/guide.html#Common%20pitfalls) if you are interested in the specifics.
 
 Also, it is definitely good to learn how to use `gdb` as it is a huge part of pwn challenges. There are many guides written for using `gdb`, and definitely use a plugin such as `gef` or `pwndbg` as they provide functions that make it easier to play around with the application.
 
