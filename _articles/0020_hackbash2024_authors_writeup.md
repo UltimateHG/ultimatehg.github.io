@@ -67,13 +67,13 @@ However, recalling that the variable `name` is of size `0x10`, but `fgets()` is 
 
 The layout of the stack at this point looks something like this:
 ```
-------------------------
-|      name[0x10]      |
-------------------------
-|      $rbp[0x08]      |
-------------------------
-| return pointer[0x08] |
-------------------------
+┌──────────────────────┐
+│      name[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│ return pointer[0x08] │
+└──────────────────────┘
 ```
 
 The return pointer is actually represented (specifically, in Intel x86_64) as $rip, which stands for Instruction Pointer.
@@ -262,25 +262,25 @@ if (strncmp(verify, password, 16)) {
 
 With these conditions in mind, let's visualize our stack layout. Remember as discussed earlier, the variables are pushed onto the stack sequentially. From hereon out, I will be referring to the return pointer as `$rip`.
 ```
-------------------------
-|     input[0x10]      |
-------------------------
-|      mark[0x10]      |
-------------------------
-|    password[0x10]    |
-------------------------
-|     mark2[0x10]      |
-------------------------
-|    checker[0x10]     |
-------------------------
-|     verify[0x10]     |
-------------------------
-|    watchdog[0x10]    |
-------------------------
-|      $rbp[0x08]      |
-------------------------
-|      $rip[0x08]      |
-------------------------
+┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│      mark[0x10]      │
+├──────────────────────┤
+│    password[0x10]    │
+├──────────────────────┤
+│     mark2[0x10]      │
+├──────────────────────┤
+│    checker[0x10]     │
+├──────────────────────┤
+│     verify[0x10]     │
+├──────────────────────┤
+│    watchdog[0x10]    │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
 ```
 
 Hence, as we have a buffer overflow and we start writing from `input`, we will write in the order as shown above. The payload would hence be:
@@ -528,15 +528,15 @@ We can see that there is a string compare in the next part of the code. It check
 
 The stack in this function would look something like:
 ```
-------------------------
-|     input[0x10]      |
-------------------------
-|    password[0x10]    |
-------------------------
-|      $rbp[0x08]      |
-------------------------
-|      $rip[0x08]      |
-------------------------
+┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│    password[0x10]    │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
 ```
 
 In order to pass the `input` = `password` check, we can send something like
@@ -568,17 +568,17 @@ This might be clearer to see and use for your final exploit than `talk()`, so I 
 
 The stack in this function would look something like:
 ```
-------------------------
-|     input[0x10]      |
-------------------------
-|      $rbp[0x08]      |
-------------------------
-|    canary[0x10]      |
-------------------------
-|      $rbp[0x08]      |
-------------------------
-|      $rip[0x08]      |
-------------------------
+┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│    canary[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
 ```
 
 Notice where the canary is placed within this function. Actually, this can be visualizable if we open the program in the `gdb` debugger.
