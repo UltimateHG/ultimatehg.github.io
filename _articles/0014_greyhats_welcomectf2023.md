@@ -461,3 +461,5 @@ I enjoyed this CTF quite a bit as I felt the pwn challenges were all pretty fun 
 I would like to thank the talented individuals at NUS Greyhats for coming up with the challenges and hosting this CTF for us. Even if this CTF does not have any prize money, it was still genuinely fun to do and I wouldn't mind doing it again any other day just for practice.
 
 Thanks for reading.
+
+**EDIT (Sept 2023): Just for clarity, I joined NUS Greyhats shortly after this post was published, but up until this post I still wasn't a member. Hence, in the next post onwards, I talk about being a part of NUS Greyhats**
