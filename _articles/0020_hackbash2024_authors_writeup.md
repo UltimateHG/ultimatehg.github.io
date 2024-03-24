@@ -76,7 +76,7 @@ The layout of the stack at this point looks something like this:
 ------------------------
 ```
 
-The return pointer is actually represented (specifically, in Intel x86_64) as $rip, which stands for (R) Instruction Pointer.
+The return pointer is actually represented (specifically, in Intel x86_64) as $rip, which stands for Instruction Pointer.
 
 So with this knowledge in mind, we know that the first `0x10` bytes will fill up `name`, the next `0x8` bytes will overwrite (i.e. "fill up") `$rbp`, and the last `0x8` bytes will overwrite the `$rip` (return pointer).
 
