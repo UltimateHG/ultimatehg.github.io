@@ -1,0 +1,41 @@
+@import 'init.css';
+
+#work-container {
+  margin-top: 90px;
+}
+
+#work-title {
+  width: auto;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+#work-subtitle {
+  font-size: 20px;
+  margin-bottom: 30px;
+  word-break: keep-all;
+  font-weight: 400;
+}
+
+#work-container a {
+  text-decoration: underline;
+}
+
+#work-container a:hover,
+#work-container a:focus {
+  color: #18191A;
+  background-color: #E4E5E6;
+}
+
+#work-container img {
+  display: block;
+  max-width: 400px;
+  width: 100%;
+  margin-bottom: 15px;
+  border: 1px solid #E4E5E6;
+}
+
+#work-container p {
+  font-size: 16px;
+  line-height: 200%;
+}
