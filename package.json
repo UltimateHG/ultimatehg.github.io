@@ -24,7 +24,7 @@
   "dependencies": {
     "dayjs": "^1.11",
     "highlight.js": "^11.5",
-    "katex": "^0.15",
+    "katex": "^0.16",
     "mermaid": "^9.1"
   },
   "devDependencies": {
