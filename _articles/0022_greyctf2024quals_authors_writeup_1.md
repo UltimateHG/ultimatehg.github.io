@@ -1,7 +1,7 @@
 ---
 id: 22
-title: "GreyCTF Qualifiers 2024 - Author's Writeup"
-subtitle: "Baby Goods | Slingring Factory | Greycat's Adventure"
+title: "GreyCTF Qualifiers 2024 - Author's Writeup | Pwn"
+subtitle: "Baby Goods | Slingring Factory"
 date: "2024.06.15"
 tags: "greyctf, greyhats, greyctf qualifiers, ctf, ctf blog, writeup"
 ---
@@ -328,9 +328,10 @@ p.interactive()
 
 Flag: `grey{y0u_4r3_50rc3r3r_supr3m3_m45t3r_0f_th3_myst1c_4rts_mBRt!y4vz5ea@uq}`
 
-# Greycat's Adventure
+## Afterword
 
-So, my original idea was to come up with a Unity game and make the participants hack the game in order to achieve the impossible achievements. When I finished compiling and testing out the game, I realized I did not actually encrypt the flags in my code, which means it would be possible to `strings` most of the flags (less 1) if you find the correct il2cpp file. But at that point it was already really late, in every sense of the word, so I kinda got lazy to re-build and re-test the project. Well, lesson learnt, next game-related challenge will be better.
+I felt that making (and solving) the pwn challenges was quite interesting for me, and I hope that while my challenges this time round were not meant to be hard, it at least provided some kind of fun to anyone that attempted them :)
 
-Either way, I will be sharing the intended solution here in case anyone is interested. I'll go through the achievements one by one. For ease of understanding and convenience of use, I will be using Cheat Engine (yep.) to hack the game.
+We are constantly looking out for new challenge ideas so please look forward to our next GreyCTF (if it happens). Either way, I will keep making challenges here and there for CTFs and play CTFs whenever I'm free, so I look forward to meeting everyone again one way or another.
 
+I will cover the intended solutions for Greycat's Adventure in the next post.
