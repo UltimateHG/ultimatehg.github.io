@@ -3,7 +3,7 @@ id: 17
 title: "ECSC 2023: Lady Luck"
 subtitle: "ECSC 2023 Day 3: Pwn"
 date: "2023.11.02"
-tags: "ecsc, ecsc2023, c, c++, pwn, ctf"
+tags: "ecsc, ecsc2023, c, c++, pwn, ctf, ctf blog, writeup"
 ---
 
 ## Foreword

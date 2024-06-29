@@ -3,7 +3,7 @@ id: 11
 title: "Fuzzing Windows Stuff: WMF"
 subtitle: "1. Windows Media Foundation: MP3"
 date: "2021.03.12"
-tags: "c++, fuzzing, windows, windows media foundation"
+tags: "c++, fuzzing, windows, windows media foundation, winafl, vulnerability research"
 ---
 
 ## Foreword

@@ -3,7 +3,7 @@ id: 5
 title: "STACK CTF 2020 - Mobile Challenges: Part 2"
 subtitle: "Challenge 4: True or false?"
 date: "2020.12.09"
-tags: "ctf, writeup, mobile, android, android re, reverse engineering"
+tags: "ctf, writeup, mobile, android, android re, reverse engineering, ctf blog"
 ---
 
 ## Foreword

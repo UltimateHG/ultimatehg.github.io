@@ -3,7 +3,7 @@ id: 6
 title: "STACK CTF 2020 - Mobile Challenges: Part 3"
 subtitle: "Challenge 3: What's with the Search!"
 date: "2020.12.09"
-tags: "ctf, writeup, mobile, android, android re, reverse engineering"
+tags: "ctf, writeup, mobile, android, android re, reverse engineering, ctf blog"
 ---
 
 ## Foreword

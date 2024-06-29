@@ -3,7 +3,7 @@ id: 9
 title: "Learning To Harness: Debugging and Fuzzing"
 subtitle: "Part 3: Fixing The Mistakes, Finishing The Harness"
 date: "2020.12.15"
-tags: "c, fuzzing, adobe, acrobat dc"
+tags: "c, fuzzing, adobe, acrobat dc, winafl, vulnerability research"
 ---
 
 ## Foreword

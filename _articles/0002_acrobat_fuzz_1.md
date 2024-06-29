@@ -3,7 +3,7 @@ id: 2
 title: "Learning To Harness: Crash Coursing C"
 subtitle: "Part 1: Understanding structs and pointers in a harness"
 date: "2020.10.26"
-tags: "c, fuzzing, adobe, acrobat dc"
+tags: "c, fuzzing, adobe, acrobat dc, winafl, vulnerability research"
 ---
 
 ## Foreword

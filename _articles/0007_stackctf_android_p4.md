@@ -3,7 +3,7 @@ id: 7
 title: "STACK CTF 2020 - Mobile Challenges: Part 4"
 subtitle: "Challenge 5: Welcome to Korovax Mobile!"
 date: "2020.12.09"
-tags: "ctf, writeup, mobile, android, android re, reverse engineering"
+tags: "ctf, writeup, mobile, android, android re, reverse engineering, ctf blog"
 ---
 
 ## Foreword

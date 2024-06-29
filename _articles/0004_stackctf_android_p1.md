@@ -3,7 +3,7 @@ id: 4
 title: "STACK CTF 2020 - Mobile Challenges: Part 1"
 subtitle: "Challenge 1: Contact Us! | Challenge 2: Subscribe!"
 date: "2020.12.09"
-tags: "ctf, writeup, mobile, android, android re, reverse engineering"
+tags: "ctf, writeup, mobile, android, android re, reverse engineering, ctf blog"
 ---
 
 ## Foreword

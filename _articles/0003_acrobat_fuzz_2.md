@@ -3,7 +3,7 @@ id: 3
 title: "Learning To Harness: Custom Stream Decoders"
 subtitle: "Part 2: Reverse Engineering a Stream Decoder"
 date: "2020.11.20"
-tags: "c, fuzzing, adobe, acrobat dc"
+tags: "c, fuzzing, adobe, acrobat dc, winafl, vulnerability research"
 ---
 
 ## Foreword

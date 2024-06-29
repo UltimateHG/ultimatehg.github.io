@@ -3,7 +3,7 @@ id: 14
 title: "GreyHats WelcomeCTF 2023: Pwn"
 subtitle: "Derusting my Pwn"
 date: "2023.08.27"
-tags: "c++, c, pwn, ctf, greyhats"
+tags: "c++, c, pwn, ctf, greyhats, greyctf, welcomectf, ctf, ctf blog, writeup"
 ---
 
 ## Foreword

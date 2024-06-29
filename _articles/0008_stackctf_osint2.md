@@ -3,7 +3,7 @@ id: 8
 title: "STACK CTF 2020 - OSINT Challenge 2"
 subtitle: ""Where was he kidnapped?""
 date: "2020.12.09"
-tags: "ctf, writeup, osint, open source intelligence"
+tags: "ctf, writeup, osint, open source intelligence, ctf blog"
 ---
 
 ## Foreword

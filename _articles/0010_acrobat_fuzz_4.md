@@ -3,7 +3,7 @@ id: 10
 title: "Learning To Harness: Update"
 subtitle: "Minor Updates on Fuzzing Results"
 date: "2021.01.14"
-tags: "c, fuzzing, adobe, acrobat dc"
+tags: "c, fuzzing, adobe, acrobat dc, winafl, vulnerability research"
 ---
 
 EDIT: I realized that I forgot to publish after writing, so this post was published a _little bit_ later than the intended date, whoops.

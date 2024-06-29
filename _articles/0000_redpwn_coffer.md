@@ -3,7 +3,7 @@ id: 0
 title: "Writeup for RedPwnCTF 2020 coffer-overflow-0, 1, 2"
 subtitle: "Beginner's Pwn"
 date: "2020.06.26"
-tags: "ctf, linux-bof"
+tags: "ctf, linux-bof, ctf blog, writeup, ctf writeup"
 ---
 
 # coffer-overflow 0

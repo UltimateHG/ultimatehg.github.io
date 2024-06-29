@@ -3,7 +3,7 @@ id: 21
 title: "Windows Heap Manager - An Exploration"
 subtitle: "Personal Notes from Corelan Windows Heap Exploitation Workshop"
 date: "2024.05.31"
-tags: "windows heap, windows, heap, exploit"
+tags: "windows heap, windows, heap, exploit, vulnerability research"
 ---
 
 ## Foreword

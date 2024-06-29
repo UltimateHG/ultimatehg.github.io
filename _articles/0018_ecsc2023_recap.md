@@ -3,7 +3,7 @@ id: 18
 title: "[Blog] ECSC 2023: Recap"
 subtitle: "A blog post on my experience"
 date: "2023.11.03"
-tags: "ecsc, ecsc2023, ctf"
+tags: "ecsc, ecsc2023, ctf, ctf blog, writeup"
 ---
 
 ## Foreword

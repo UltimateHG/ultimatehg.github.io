@@ -3,7 +3,7 @@ id: 12
 title: "Fuzzing Windows Stuff: WMF"
 subtitle: "2. Windows Media Foundation: Metadata"
 date: "2021.04.18"
-tags: "c++, fuzzing, windows, windows media foundation"
+tags: "c++, fuzzing, windows, windows media foundation, winafl, vulnerability research"
 ---
 
 ## Foreword

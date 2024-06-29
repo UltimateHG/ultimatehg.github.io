@@ -3,7 +3,7 @@ id: 16
 title: "ECSC 2023: Flux Capacitor"
 subtitle: "ECSC 2023 Day 1: Pwn"
 date: "2023.11.02"
-tags: "ecsc, ecsc2023, c, pwn, ctf"
+tags: "ecsc, ecsc2023, c, pwn, ctf, ctf blog, writeup"
 ---
 
 ## Foreword

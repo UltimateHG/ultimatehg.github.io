@@ -3,7 +3,7 @@ id: 20
 title: "Hackbash Finals CTF 2024: Author's Writeup (pwn)"
 subtitle: "Full Buffer Developer | Stackrunning 2077 | To (not) kill a canary"
 date: "2024.03.16"
-tags: "hackbash, aycep, greyhats, ctf"
+tags: "hackbash, aycep, greyhats, ctf, ctf blog, writeup"
 ---
 
 ## Foreword
