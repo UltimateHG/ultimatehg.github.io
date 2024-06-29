@@ -48,7 +48,7 @@
     "markdown-it-footnote": "^3.0",
     "markdown-it-image-lazy-loading": "^1.2",
     "markdown-it-inline-comments": "^1.0",
-    "markdown-it-mermaid": "^0.2",
+    "markdown-it-mermaid": "^0.2.5",
     "markdown-it-table-of-contents": "^0.6",
     "markdown-it-texmath": "^0.9",
     "ts-node": "^10.7",
