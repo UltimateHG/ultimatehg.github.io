@@ -1,0 +1,184 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>STACK CTF 2020 - Mobile Challenges: Part 3</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        STACK CTF 2020 - Mobile Challenges: Part 3
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Challenge 3: Whats with the Search!
+        </h2>
+      
+      <time id="article-date">
+        2020.12.09
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a><li><a href="#challenge-description">Challenge Description</a></ul><li><a href="#surverying-the-target">Surverying The Target</a><li><a href="#decompiling-the-apk">Decompiling The APK</a><li><a href="#linking-everything-together">Linking Everything Together</a><li><a href="#afterword">Afterword</a></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>This challenge comes after challenge 4, titled “True or false?”. The numbering is slightly weird, hence in both writeups I might repeat some things already mentioned in the other just in case some people are only interested in one. This challenge was a pretty simple one, so let’s get right into it.</p>
+<p>DISCLAIMER: This challenge requires you to have already logged into the admin panel. If you don’t know how to do that, please refer to the writeup for mobile challenge 4.</p>
+<p>You can download the challenge file (mobile-challenge.apk) from <a href="https://drive.google.com/file/d/1tf8-C1FKYBMKGICRKYe7abGGs3LX2i2m/view?usp=sharing">here</a>.</p>
+<h2 id="challenge-description"tabindex="-1">Challenge Description</h2>
+<blockquote>
+<p>There is an admin dashboard in the Korovax mobile. There aren’t many functions, but we definitely can search for something!</p>
+</blockquote>
+<h1 id="surverying-the-target"tabindex="-1">Surverying The Target</h1>
+<p>The description for the challenge mentioned that “we can definitely search for something” within the admin dashboard, so we of course start by opening up the admin dashboard and taking a look:</p>
+<p><img src="https://i.ibb.co/xGHsrSQ/1.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can see that there’s a search bar at the top and also a search button. Tapping the search button with an empty or random input will produce a Toast that just reads “<code>Flag is wrong!</code>”. That means that we likely have found the place that we have to input our flag in order to solve the challenge. Let’s fire up JADX-GUI, which is a decompiler for APK files, to decompile our <code>mobile-challenge.apk</code> file.</p>
+<h1 id="decompiling-the-apk"tabindex="-1">Decompiling The APK</h1>
+<p>We first need to look for the functions that we are interested in. The most obvious one to look for would of course be the screen(s) that we can directly see in the app. We are looking for a dashboard or a home page or something along those lines that is also related to admin, since the user login also likely has its own set of classes. We see a <code>sg.gov.tech.ctf.mobile</code> package, so let’s start from there, expanding all the packages within this package:</p>
+<p><img src="https://i.ibb.co/T2BYQLd/3.png"alt=""loading="lazy"decoding="async"></p>
+<p>Looking through the classes, we can see that there is a class called <code>AdminHome</code> under the package <code>Admin</code>. This seems like a pretty good place to start. We want to look at the <code>onCreate()</code> function in order to figure out what the search bar is within the code, which would make things easier. We see the <code>onCreate()</code> as follows:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">onCreate</span><span class="hljs-params">(Bundle savedInstanceState)</span> {
+  <span class="hljs-built_in">super</span>.onCreate(savedInstanceState);
+  setContentView(R.layout.admin_home_activity);
+  getWindow().setSoftInputMode(<span class="hljs-number">32</span>);
+  <span class="hljs-built_in">this</span>.f2930c = (ImageButton) findViewById(R.id.button_submit);
+  <span class="hljs-built_in">this</span>.f2931d = (ImageButton) findViewById(R.id.network);
+  <span class="hljs-built_in">this</span>.f2932e = (EditText) findViewById(R.id.editText_enteredFlag);
+  <span class="hljs-built_in">this</span>.f2934g = (CalendarView) findViewById(R.id.calendar_view);
+  <span class="hljs-built_in">this</span>.f2933f = (TextView) findViewById(R.id.date);
+  <span class="hljs-built_in">this</span>.f2931d.setOnClickListener(<span class="hljs-keyword">new</span> <span class="hljs-title class_">a</span>());
+  <span class="hljs-built_in">this</span>.f2934g.setOnDateChangeListener(<span class="hljs-keyword">new</span> <span class="hljs-title class_">b</span>());
+  <span class="hljs-built_in">this</span>.f2930c.setOnClickListener(<span class="hljs-keyword">new</span> <span class="hljs-title class_">c</span>());
+}
+</code></pre>
+<p>We see an <code>EditText</code> being assigned to <code>findViewById(R.id.editText_enteredFlag)</code>, so that means that that’s likely the search bar where we’re supposed to enter our flag. There is also another <code>ImageButton</code> assigned to <code>findViewById(R.id.button_submit)</code>, so seeing as there are no other submit buttons, that’s likely referring to the search button itself. The <code>OnClickListener</code> for the submit button, <code>f2930c</code>, was set to <code>new c()</code>, so let’s take a look at the class <code>c</code> to see what it does. <code>c</code> extends <code>View.OnClickListener</code>, and the constructor is just a default constructor. However, it contains a custom <code>onClick()</code> function:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">onClick</span><span class="hljs-params">(View v)</span> {
+  <span class="hljs-type">AdminHome</span> <span class="hljs-variable">adminHome</span> <span class="hljs-operator">=</span> AdminHome.<span class="hljs-built_in">this</span>;
+  adminHome.f2932e = (EditText) adminHome.findViewById(R.id.editText_enteredFlag);
+  <span class="hljs-keyword">if</span> (AdminHome.<span class="hljs-built_in">this</span>.b(AdminHome.<span class="hljs-built_in">this</span>.c(AdminHome.<span class="hljs-built_in">this</span>.f2932e.getText().toString())).equalsIgnoreCase(AdminHome.<span class="hljs-built_in">this</span>.f2929b)) {
+    c.<span class="hljs-type">a</span> <span class="hljs-variable">builder</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">c</span>.a(AdminHome.<span class="hljs-built_in">this</span>);
+    <span class="hljs-type">View</span> <span class="hljs-variable">view</span> <span class="hljs-operator">=</span> LayoutInflater.from(AdminHome.<span class="hljs-built_in">this</span>).inflate(R.layout.custom_alert, (ViewGroup) <span class="hljs-literal">null</span>);
+    ((TextView) view.findViewById(R.id.RES_2131296615)).setText(<span class="hljs-string">&quot;Congrats!&quot;</span>);
+    ((TextView) view.findViewById(R.id.alert_detail)).setText(<span class="hljs-string">&quot;Add govtech-csg{} to what you found!&quot;</span>);
+    builder.h(<span class="hljs-string">&quot;Proceed&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">a</span>());
+    builder.f(<span class="hljs-string">&quot;Close&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">b</span>());
+    builder.k(view);
+    builder.l();
+    Toast.makeText(AdminHome.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Flag is correct!&quot;</span>, <span class="hljs-number">0</span>).show();
+    <span class="hljs-keyword">return</span>;
+  }
+  Toast.makeText(AdminHome.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Flag is wrong!&quot;</span>, <span class="hljs-number">0</span>).show();
+}
+</code></pre>
+<p>There are some other functions that are being called, but we can see that our most important line is the condition check in the if statement: <code>AdminHome.this.b(AdminHome.this.c(AdminHome.this.f2932e.getText().toString())).equalsIgnoreCase(AdminHome.this.f2929b)</code>. This compares the userinput passed into several nested functions against a previously defined string <code>f2929b</code>. Let’s take this one step at a time. Firstly, we look at the left side of the compare, which calls the functions <code>b()</code> and <code>c()</code>, so let’s take a look at those:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">final</span> String <span class="hljs-title function_">c</span><span class="hljs-params">(String enteredFlagString)</span> {
+  <span class="hljs-keyword">if</span> (!enteredFlagString.contains(<span class="hljs-string">&quot;govtech-csg{&quot;</span>)) {
+    <span class="hljs-keyword">return</span> enteredFlagString;
+  }
+  <span class="hljs-type">String</span> <span class="hljs-variable">result</span> <span class="hljs-operator">=</span> enteredFlagString.replace(<span class="hljs-string">&quot;govtech-csg{&quot;</span>, BuildConfig.FLAVOR);
+  <span class="hljs-keyword">return</span> result.substring(<span class="hljs-number">0</span>, result.length() - <span class="hljs-number">1</span>);
+}
+
+<span class="hljs-keyword">public</span> String <span class="hljs-title function_">b</span><span class="hljs-params">(String toHash)</span> {
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-type">MessageDigest</span> <span class="hljs-variable">digest</span> <span class="hljs-operator">=</span> MessageDigest.getInstance(<span class="hljs-string">&quot;SHA-1&quot;</span>);
+    <span class="hljs-type">byte</span>[] bytes = toHash.getBytes(SQLiteDatabase.KEY_ENCODING);
+    digest.update(bytes, <span class="hljs-number">0</span>, bytes.length);
+    <span class="hljs-keyword">return</span> bytesToHex(digest.digest());
+  } <span class="hljs-keyword">catch</span> (NoSuchAlgorithmException e2) {
+    System.out.println(<span class="hljs-string">&quot;Algorithm not recognised&quot;</span>);
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>;
+  } <span class="hljs-keyword">catch</span> (UnsupportedEncodingException e3) {
+    System.out.println(<span class="hljs-string">&quot;Something is wrong. Like really.&quot;</span>);
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>;
+  }
+}
+</code></pre>
+<h1 id="linking-everything-together"tabindex="-1">Linking Everything Together</h1>
+<p>Ah, so all <code>c()</code> does is it accepts and input string and strips “<code>govtech-csg{</code>” (it is a bit weird though, it doesn’t remove “<code>}</code>” from the back). <code>b()</code> on the other hand would take in an input and the key line here: <code>MessageDigest digest = MessageDigest.getInstance(&quot;SHA-1&quot;);</code> tells us that it wants to encode something with <code>SHA-1</code>. Going further down, we see that the input passed into <code>b()</code> is converted into a <code>byte</code> array and then passed into <code>digest</code>. This means that what <code>b()</code> does is accept a string input, encrypts it with <code>SHA-1</code> and returns the result as a string. Now, let’s link it back to the <code>onClick()</code> that we were analysing earlier.</p>
+<p>This means that the left side of the compare is a <code>SHA-1</code>-encrypted string of the user’s input, and it’s trying to do a simple compare against the string <code>f2929b</code>. We’re now halfway there, let’s take a look at <code>f2929b</code>:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-type">String</span> <span class="hljs-variable">f2929b</span> <span class="hljs-operator">=</span> getPasswordHash();
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">native</span> String <span class="hljs-title function_">getPasswordHash</span><span class="hljs-params">()</span>;
+</code></pre>
+<p>It is assigned to the return value of <code>getPasswordHash()</code>, which is defined as a <code>native</code> function. Hmm, what is a <code>native</code> function? Basically, Java has a programming interface called the Java Native Interface (JNI), which allows for writing Java native methods and embedding the Java virtual machine into native applications. Simply put, a <code>native</code> function is a function that has been defined in a library compiled from languages such as C, C++ and assembly. Now this is something we are unable to see directly from JADX-GUI, so we need to do something to also unpack the APK for us. This can be done easily with a popular tool called APKTool. APKTool decompiles Android code into the smali format, but also unpacks the APK so we will be able to see any libraries that it uses. The smali code will not be needed to solve this challenge so I will not be covering that. Let’s use APKTool to decompile <code>mobile-challenge.apk</code>.</p>
+<pre class="hljs"><code>$ apktool d mobile-challenge.apk
+</code></pre>
+<p>This will decompile and unpack the APK into the folder <code>mobile-challenge</code>. We can see a <code>lib</code> folder, and clicking into it reveals 4 more folders, but they just represent libraries compiled for different architectures, so I’ll just use the <code>x86_64</code> libraries. I open up <code>libnative-lib.so</code> in IDA x64 and search for the function <code>getPasswordHash()</code>, and sure enough, it’s there.</p>
+<p>I decompile the function and we’re left with this:</p>
+<p><img src="https://i.ibb.co/R0kfWYZ/3.png"alt=""loading="lazy"decoding="async"></p>
+<p>We see that it calls a sub function, but from what I can see this function contains this interesting part:</p>
+<p><img src="https://i.ibb.co/cKqh3sV/4.png"alt=""loading="lazy"decoding="async"></p>
+<p>This string, <code>b7c1020edc5d4ab5ce059909f0a7bd73b3de005b</code>, is exactly in the format of SHA-1. This lead me to believe that what this function returns is just <code>b7c1020edc5d4ab5ce059909f0a7bd73b3de005b</code> as a string. This means that our comparison target <code>f2929b</code> is likely just the string <code>b7c1020edc5d4ab5ce059909f0a7bd73b3de005b</code>. Now we already have all the tools needed to finish the challenge.</p>
+<p>The if statement compares a <code>SHA-1</code>-encrypted user input to <code>b7c1020edc5d4ab5ce059909f0a7bd73b3de005b</code>, and if true it will print the success message. We just need to decrypt <code>b7c1020edc5d4ab5ce059909f0a7bd73b3de005b</code>:</p>
+<p><img src="https://i.ibb.co/tD70z0F/5.png"alt=""loading="lazy"decoding="async"></p>
+<p>Let’s put it into the app just to be sure:</p>
+<p><img src="https://i.ibb.co/c8SGJfn/6.png"alt=""loading="lazy"decoding="async"></p>
+<p>The flag for this challenge is thus <code>govtech-csg{qqww1122}</code>.</p>
+<h1 id="afterword"tabindex="-1">Afterword</h1>
+<p>This was a relatively easy challenge that didn’t require much Android knowledge, except knowledge of the tools to use to decompile the APK, but that is easily googleable. Of course, it still requires basic knowledge for reverse engineering as well as how to link all your findings back to the main problem at hand. This was, with no doubt, easier than the challenge required to reach this screen: Challenge 4 - True or false?</p>
+<p>Thanks for reading.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/7.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">STACK CTF 2020 - Mobile Challenges: Part 4</p>
+                <p class="article-navigation-subtitle">Challenge 5: Welcome to Korovax Mobile!</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/5.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">STACK CTF 2020 - Mobile Challenges: Part 2</p>
+                <p class="article-navigation-subtitle">Challenge 4: True or false?</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+

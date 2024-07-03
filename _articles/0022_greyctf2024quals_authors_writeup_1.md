@@ -49,7 +49,7 @@ pwndbg> x/20x $rsp
 0x7fffffffe2d0: 0x00000000      0x00000000      0x004040a0      0x00000000
 ```
 
-We can see our input on the stack, and since PIE is disabled, the addresseses beginning with `0x40..` would be our potential targets for overriding. Examining each `0x40..` address, we eventually see this in `0x004013e4`:
+We can see our input on the stack, and since PIE is disabled, the addresseses beginning with `0x40..` would be our potential targets for overwriting. Examining each `0x40..` address, we eventually see this in `0x004013e4`:
 ```
 pwndbg> x 0x004013e4
 0x4013e4 <menu+186>:    0x8d481beb

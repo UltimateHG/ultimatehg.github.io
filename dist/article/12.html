@@ -1,0 +1,138 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fuzzing Windows Stuff: WMF</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        Fuzzing Windows Stuff: WMF
+      </h1>
+      
+        <h2 id="article-subtitle">
+          2. Windows Media Foundation: Metadata
+        </h2>
+      
+      <time id="article-date">
+        2021.04.18
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#windows-media-foundation-and-metadata">Windows Media Foundation And Metadata</a><li><a href="#creating-the-harness">Creating The Harness</a><li><a href="#fuzzing-and-preliminary-results">Fuzzing And Preliminary Results</a><li><a href="#afterword">Afterword</a></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>It’s definitely been some time since my last post considering this was meant to be a multiple part post series, but I’ve been quite occupied with compulsory military service (yep.) so I haven’t had access to my computer for quite a while, but now that I’m back for a very short time I might as well write up more on my WMF research. Last time round it was on fuzzing the MP3 parser, so this time I will talk about something somewhat related but also quite different, which will be file metadata. All media files have metadata that can be attached to them which will be parsed by WMF and displayed in many different places (like the generic file information you can see in windows explorer, file properties window etc.) and hence that can also be an attack surface. Similarly to all my posts, there may be some points that I will repeat here in case not everyone has read the previous post(s) in the series, so please bear with me on that.</p>
+<h1 id="windows-media-foundation-and-metadata"tabindex="-1">Windows Media Foundation And Metadata</h1>
+<p>Windows Media Foundation (WMF) is a platform on Windows that allows developers and consumers to play, convert, record and mess around with a wide range of media files. But this platform also happens to handle most if not all the media-parsing that happens in Windows, including the metadata of media files. It is actually quite fascinating, because Windows has changed the way it parsed metadata since Windows Vista, but in this post I will just be covering on metadata parsing from Windows 7 onwards.</p>
+<p>Every media-related file in Windows (7 and later) makes use of an internal object called an <code>IPropertyStore</code> to store file metadata, and it is no different for media files. WMF is able to read the <code>IPropertyStore</code> object attached to any media file and get retrieve any value, which means that we would be able to harness it separately without needing to ever read the media file or do anything with the media file. And therefore, we would want a harness that simply opens a media file, retrieves its <code>IPropertyStore</code>, reads the values and attempts to print all of them out. Once again, we would dive into <a href="https://docs.microsoft.com/en-us/windows/win32/medfound/shell-metadata-providers">Microsoft’s documentation</a> to try to understand how all the objects interact with one another and ultimately how we could achieve the our objective to retrieve the <code>IPropertyStore</code> object.</p>
+<h1 id="creating-the-harness"tabindex="-1">Creating The Harness</h1>
+<p>As with creating all other harnesses, we should try to split our initialization function (usually our <code>main</code> or <code>wmain</code>) from our fuzzing function. Using <a href="https://docs.microsoft.com/en-us/windows/win32/medfound/shell-metadata-providers">Microsoft’s documentation</a> as a guideline, we know that we need to initialize the COM library in order to run anything related to WMF, and from past experience we also know that the workload of <code>CoInitialize()</code> is too great to be used within the fuzzing function, so we will be initializing the COM library within the main function, extracting the file path inputted, and then running the fuzzing function, which we will call <code>fuzzme()</code>. We end up with a barebones <code>wmain</code> function as such:</p>
+<pre class="hljs"><code><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">wmain</span><span class="hljs-params">(<span class="hljs-type">int</span> argc, <span class="hljs-type">wchar_t</span>* argv[])</span>
+</span>{
+    <span class="hljs-keyword">if</span> (argc != <span class="hljs-number">2</span>)
+    {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;arguments: input_file\n&quot;</span>);
+        <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+    }
+
+    HRESULT hr = S_OK;
+
+    <span class="hljs-comment">// Initialize the COM library.</span>
+    hr = <span class="hljs-built_in">CoInitializeEx</span>(<span class="hljs-literal">NULL</span>, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE);
+
+    <span class="hljs-comment">// Call fuzzme</span>
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">SUCCEEDED</span>(hr))
+    {
+        <span class="hljs-keyword">if</span> (<span class="hljs-built_in">SUCCEEDED</span>(hr)) {
+            WCHAR absPath[MAX_PATH];
+            <span class="hljs-built_in">GetFullPathName</span>(argv[<span class="hljs-number">1</span>], MAX_PATH, absPath, <span class="hljs-literal">NULL</span>);
+            hr = <span class="hljs-built_in">fuzzme</span>(absPath);
+        }
+    }
+    <span class="hljs-built_in">CoUninitialize</span>();
+
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">SUCCEEDED</span>(hr) ? <span class="hljs-number">0</span> : <span class="hljs-number">1</span>;
+}
+</code></pre>
+<p>Also, fuzzing a 32-bit application on a 64-bit system always has some weird stack alignment problems, so we will be using the stack alignment mitigation that was mentioned all the way back in our Adobe research to help align the stack so that we would have a lot less bogus crashes:</p>
+<pre class="hljs"><code><span class="hljs-type">size_t</span> a = <span class="hljs-number">0</span>;
+<span class="hljs-keyword">if</span> (((<span class="hljs-type">size_t</span>)&amp;a) % <span class="hljs-number">8</span> != <span class="hljs-number">0</span>) {
+    <span class="hljs-built_in">alloca</span>(<span class="hljs-number">4</span>);
+}
+</code></pre>
+<p>Next, we would need to create the fuzzing function, and this one is actually really simple as well, because all we need to do is take in the absolute file path as obtained from the <code>wmain</code> function earlier, read the file and retrieve its <code>IPropertyStore</code> object, which can be done with 2 quick lines of code:</p>
+<pre class="hljs"><code>hr = <span class="hljs-built_in">SHGetPropertyStoreFromParsingName</span>(file, <span class="hljs-literal">nullptr</span>, GPS_READWRITE, <span class="hljs-built_in">IID_PPV_ARGS</span>(&amp;pProps));
+<span class="hljs-built_in">CHECK_HR</span>(hr, <span class="hljs-string">&quot;Failed to load into IPropertyStore.&quot;</span>);
+</code></pre>
+<p>After testing for a bit, we also realized that it wasn’t important to attempt printing out the metadata as it didn’t really affect whether or not our harness would crash, hence at this juncture we could already just call <code>SafeRelease()</code> and our <code>fuzzme()</code> function is complete.</p>
+<h1 id="fuzzing-and-preliminary-results"tabindex="-1">Fuzzing And Preliminary Results</h1>
+<p>Fuzzing with this harness was quite an emotional rollercoaster, as only a day into the fuzzing and we were already getting some promising hangs. Opening up those files with Windows Explorer caused Explorer to go unresponsive for quite a period of time, but unfortunately as long as Explorer was left alone, it would not crash and would still eventually load the metadata. However, after about a week of fuzzing, we actually managed to uncover some interesting things, which I think I cannot be talking much about yet, but do look forward to a post in the future that might discuss this further.</p>
+<p>Either way, fuzzing this seemed a lot more practical than fuzzing MP3/MP4 parsing to us, as parsing media had too many domains available as well as too many variables that we were unable to control precisely (largely due to the fact that we could not even understand it fully ourselves), so in the end we decided to focus on fuzzing the metadata instead.</p>
+<h1 id="afterword"tabindex="-1">Afterword</h1>
+<p>This is quite a short post as there really was not much that was needed to be done in order to fuzz the metadata of media files, and figuring out many things as we went along trying to fuzz WMF had been an enjoyable experience. In the next post, I would likely be moving off WMF and talking about some other attack surfaces. I was also unable to share certain information in this post, so I apologize for the short final chapter of the post, but I promise that if I’m able to, I would share more about it in the future.</p>
+<p>But that’s all for now. Thanks for reading.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/13.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">Short Analysis of CVE-2021-33760</p>
+                <p class="article-navigation-subtitle">Update on Fuzzing WMF Metadata</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/11.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">Fuzzing Windows Stuff: WMF</p>
+                <p class="article-navigation-subtitle">1. Windows Media Foundation: MP3</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+

