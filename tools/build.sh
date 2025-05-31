@@ -54,6 +54,9 @@ cp -r ./app/assets/* $DIST/assets/
 echo "> cp -r ./images/* ${DIST}/images/"
 cp -r ./images/* $DIST/images/
 
+echo -e "\n${GREEN}Setting custom domain to blog.uhg.sg...${WHITE}"
+echo "blog.uhg.sg" > ${DIST}/CNAME
+
 echo -e "\n${GREEN}Minify css files...${WHITE}"
 cleancss --batch --batch-suffix '' $DIST/styles/*.css
 
