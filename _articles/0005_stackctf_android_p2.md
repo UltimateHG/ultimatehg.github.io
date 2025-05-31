@@ -17,11 +17,11 @@ You can download the challenge file (mobile-challenge.apk) from [here](https://d
 # Baby Steps
 To begin the challenge, let's take a look at the home screen of the Korovax Mobile app (after getting past the starting animation and tapping on "Begin"):
 
-![](https://i.ibb.co/tYJW9Gj/1.png)
+![](../images/0005/1.png)
 
 We can see that there are 4 buttons: Admin Login, User Login, Info Page and Contact Us. From the challenge description, we know that what we want to do here is to log in as admin. So we tap into Admin Login:
 
-![](https://i.ibb.co/pQB2dk3/2.png)
+![](../images/0005/2.png)
 
 We can see that the username portion is already filled up with "Find the password!" and there is a password field for us to fill in, with a Login button. But we also notice a sign up tab, but after tapping into it and playing around, we realize that it does nothing (the "Sign Up" button is just a dead button). We head back to the Login screen and tap "Forgot Password?", and a toast pops up: `Hint: 32 characters with special characters and spaces. TABLE name: Users, password column: you know it! :)`
 
@@ -32,7 +32,7 @@ Now, there are many ways to approach decompiling the APK, but two of the most po
 
 We fire up JADX-GUI and decompile the APK. We first need to look for the functions that we are interested in. The most obvious one to look for would of course be the screen(s) that we can directly see in the app. Right upon opening the source code folder, I was greeted with the ever-so-familiar view of multiple packages with placeholder names like "a" and "b". However there is a `sg.gov.tech.ctf.mobile` package, so let's start from there, expanding all the packages within this package:
 
-![](https://i.ibb.co/T2BYQLd/3.png)
+![](../images/0005/3.png)
 
 Looking at all the classes, `AdminAuthenticationActivity` seems like a very good place to start. We click into it, and we realize that it is just a fragment holder, and it passes args to create 2 fragments, the "Log In" and "Sign Up" fragments. We can also see that the fragments were created by this particular function:
 ```java
@@ -97,7 +97,7 @@ We know already that one potential way to solve the challenge is to find out how
 
 Let's take a look at `c.a.a.a.a()` It is within the `c.a.a` package, so let's expand that:
 
-![](https://i.ibb.co/84hYh3Z/4.png)
+![](../images/0005/4.png)
 
 It contains 3 classes, and upon closer inspection we can see that the classes call functions from its sister classes. Let's take a look at our class of interest, `c.a.a.a`:
 ```java
@@ -162,7 +162,7 @@ My_P@s5w0Rd_iS-L34k3d_AG41n! T_T
 
 Is that the password already? It does contain exactly 32 characters, which was what the hint was mentioning at the beginning. Let's try it out:
 
-![](https://i.ibb.co/8sGPSgP/5.png)
+![](../images/0005/5.png)
 
 Voilà, we have solved the challenge.
 
@@ -343,7 +343,7 @@ $ adb install mobile-patched-aligned-debugSigned.apk
 
 We open up the admin login panel, tap "LOGIN", and tadah, we're in, again (I realize you can't see that my password input is empty but please just take my word for it xD):
 
-![](https://i.ibb.co/8sGPSgP/5.png)
+![](../images/0005/5.png)
 
 No password required, no complex reverse engineering analysis required. Just pure patching.
 

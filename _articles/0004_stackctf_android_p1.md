@@ -21,11 +21,11 @@ Well, let's dillydally no further and jump right into the mobile challenges. I w
 ## Surveying Our Target
 From the description of the challenge, we can tell that there are some comment lines or debug logs that we can try to access to solve the challenge. Our first step would be to open up the application and see what we can do. After opening the app, we are greeted with this home screen:
 
-![](https://i.ibb.co/tYJW9Gj/1.png)
+![](../images/0004/1.png)
 
 We see that there are 4 buttons, and in the bottom right corner there is a "Contact Us" button. That seems like a good place to start, since that is the name of the challenge. We tap into that and we get this screen:
 
-![](https://i.ibb.co/KFPZYfn/2.png)
+![](../images/0004/2.png)
 
 The textbox for "Contact Number" seems to have some text in there, and it says:
 ```
@@ -34,7 +34,7 @@ Sarah to Samuel: Cheat code is abracadabra. Remember to remove it before the CTF
 
 Huh, let's try inputting `abracadabra` into the textbox above for "name" then.
 
-![](https://i.ibb.co/NSZtMcK/3.png)
+![](../images/0004/3.png)
 
 Ah, we're greeted by a Toast saying: `The answer is already out if you have been checking something!`
 
@@ -96,7 +96,7 @@ C:\Users\User>adb logcat sg.gov.tech.ctf.mobile:V -s "JNI" *:S
 
 Ok, let's try inputting this into the "name" field instead:
 
-![](https://i.ibb.co/qML09SM/4.png)
+![](../images/0004/4.png)
 
 Bingo, that's the flag right there.
 
@@ -108,7 +108,7 @@ $ apktool d mobile-challenge.apk
 
 This will unpack the APK into a folder called `mobile-challege`, and within there will be a `lib` folder. Inside this folder there should be folders containing libraries compiled for different architectures, but that isn't too important so let's just go with the `x86_64` architecture. We open up that folder and see our library `libnative-lib.so`. Let's fire up IDA and try to find the function that we're interested in:
 
-![](https://i.ibb.co/7CCXxHr/5.png)
+![](../images/0004/5.png)
 
 Right there, we see the call to `__android_log_print`, which is basically the native version of `Log.<priority>()`. We see that the priority is "3", the tag is "JNI" and the log message is:
 ```
@@ -125,7 +125,7 @@ There, we have now achieved the same effect as before. Once again, we now simply
 ## Surveying The Target
 From the description, we can tell that we need to find some place in the app that allows us to do something related to subscribing. Coincidentally, from the previous challenge, our "Contact Us" view seemed to have another field below for us to enter our email to subscribe:
 
-![](https://i.ibb.co/KFPZYfn/2.png)
+![](../images/0004/2.png)
 
 Nice.
 
@@ -162,7 +162,7 @@ public native int check(String str);
 
 Oh, it is a `native` function as well. Similarly to before, after unpacking the APK with APKTool we find the relevant lib file and open it up in IDA, looking for the `check()` function:
 
-![](https://i.ibb.co/0BcPBsL/6.png)
+![](../images/0004/6.png)
 
 Well, that was surprisingly easy, our flag is right there: `govtech-csg{th3rE_15_nO_n0bIliTy_In_p0Vert7}`. Check basically just compares our input string to "`govtech-csg{th3rE_15_nO_n0bIliTy_In_p0Vert7}`", and if they match exactly it will return 0, which sets `flatStatus` to 0 and satisfies the condition for reaching the success code.
 

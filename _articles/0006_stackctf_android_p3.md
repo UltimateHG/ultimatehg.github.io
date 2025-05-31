@@ -19,14 +19,14 @@ You can download the challenge file (mobile-challenge.apk) from [here](https://d
 # Surverying The Target
 The description for the challenge mentioned that "we can definitely search for something" within the admin dashboard, so we of course start by opening up the admin dashboard and taking a look:
 
-![](https://i.ibb.co/xGHsrSQ/1.png)
+![](../images/0006/1.png)
 
 We can see that there's a search bar at the top and also a search button. Tapping the search button with an empty or random input will produce a Toast that just reads "`Flag is wrong!`". That means that we likely have found the place that we have to input our flag in order to solve the challenge. Let's fire up JADX-GUI, which is a decompiler for APK files, to decompile our `mobile-challenge.apk` file.
 
 # Decompiling The APK
 We first need to look for the functions that we are interested in. The most obvious one to look for would of course be the screen(s) that we can directly see in the app. We are looking for a dashboard or a home page or something along those lines that is also related to admin, since the user login also likely has its own set of classes. We see a `sg.gov.tech.ctf.mobile` package, so let's start from there, expanding all the packages within this package:
 
-![](https://i.ibb.co/T2BYQLd/3.png)
+![](../images/0006/2.png)
 
 Looking through the classes, we can see that there is a class called `AdminHome` under the package `Admin`. This seems like a pretty good place to start. We want to look at the `onCreate()` function in order to figure out what the search bar is within the code, which would make things easier. We see the `onCreate()` as follows:
 ```java
@@ -111,21 +111,21 @@ This will decompile and unpack the APK into the folder `mobile-challenge`. We ca
 
 I decompile the function and we're left with this:
 
-![](https://i.ibb.co/R0kfWYZ/3.png)
+![](../images/0006/3.png)
 
 We see that it calls a sub function, but from what I can see this function contains this interesting part:
 
-![](https://i.ibb.co/cKqh3sV/4.png)
+![](../images/0006/4.png)
 
 This string, `b7c1020edc5d4ab5ce059909f0a7bd73b3de005b`, is exactly in the format of SHA-1. This lead me to believe that what this function returns is just `b7c1020edc5d4ab5ce059909f0a7bd73b3de005b` as a string. This means that our comparison target `f2929b` is likely just the string `b7c1020edc5d4ab5ce059909f0a7bd73b3de005b`. Now we already have all the tools needed to finish the challenge.
 
 The if statement compares a `SHA-1`-encrypted user input to `b7c1020edc5d4ab5ce059909f0a7bd73b3de005b`, and if true it will print the success message. We just need to decrypt `b7c1020edc5d4ab5ce059909f0a7bd73b3de005b`:
 
-![](https://i.ibb.co/tD70z0F/5.png)
+![](../images/0006/5.png)
 
 Let's put it into the app just to be sure:
 
-![](https://i.ibb.co/c8SGJfn/6.png)
+![](../images/0006/6.png)
 
 The flag for this challenge is thus `govtech-csg{qqww1122}`.
 

@@ -17,11 +17,11 @@ You can download the challenge file (mobile-challenge.apk) from [here](https://d
 # First Steps
 In order to start solving the challenge, we need to first understand what we have to attack. The challenge description says "do you really need to sign up to be a member?", so we can assume it has somethign to do with logging in. Let's first open the app and take a look at the home screen:
 
-![](https://i.ibb.co/tYJW9Gj/1.png)
+![](../images/0007/1.png)
 
 We can see that there is a user login page. Let's tap into that. We are greeted by this screen:
 
-![](https://i.ibb.co/Tgf4cZH/2.png)
+![](../images/0005/2.png)
 
 Playing around a bit, we realize that the "Sign Up" fragment is useless as the "Sign Up" button is just a dead button that does nothing. Tapping "Forget Password?" just creates a Toast that says: `You can't handle the truth!`. This could be an SQL injection challenge, but we need to make sure before we try to attack anything. Let's try decompiling the APK.
 
@@ -30,7 +30,7 @@ There are many ways to approach decompiling the APK, but two of the most popular
 
 Both will come in handy, but for this particular method we will only need to use JADX-GUI to look at the decompiled code. Let's fire up JADX-GUI and open the APK file. We are immediately greeted with many many packages, but we can find a package labelled `sg.gov.tech.ctf.mobile` package, so let's start from there, expanding all the packages within this package:
 
-![](https://i.ibb.co/T2BYQLd/3.png)
+![](../images/0007/3.png)
 
 We can see that under the `User` package, there is a class named `AuthenticationActivity`. This looks promising, so let's decompile it and see what it does. We can see many functions being defined, but we are interested in the `onCreateView()` function, as it is the function that assigns our view components to its corresponding object in the code. We can these lines within the function:
 ```java
@@ -97,13 +97,13 @@ public void a(SQLiteDatabase sqLiteDatabase) {
 
 A query that adds a user with username `user` and password `My_P@s5w0Rd_iS-L34k3d`? Of course we have to try it out.
 
-![](https://i.ibb.co/rxff1GJ/4.png)
+![](../images/0007/4.png)
 
 Ah, it just spawns a Toast that reads: `Do you think it will be that easy? Muahaha`. Curses, of course they wouldn't let the challenge end right here. Let's continue looking at how to tackle the challenge.
 
 Since we know it is an SQL injection challenge, let's try giving it the most basic SQL injection password input. We will login with the username `user` and the password `' OR 1=1 -- ` (including the space at the end!):
 
-![](https://i.ibb.co/M9X75YK/5.png)
+![](../images/0007/5.png)
 
 Well, that worked. We now have the flag.
 
@@ -136,7 +136,7 @@ public void onClick(View v) {
 
 Let's take a look at `c.a.a.a.a()`. It is within the `c.a.a` package, so let's expand that:
 
-![](https://i.ibb.co/84hYh3Z/4.png)
+![](../images/0007/4.png)
 
 It contains 3 classes, and upon closer inspection we can see that the classes call functions from its sister classes. Let's take a look at our class of interest, `c.a.a.a`:
 ```java
@@ -328,7 +328,7 @@ $ adb install mobile-patched-aligned-debugSigned.apk
 
 We open up the patched app, go into the user login page, and simply just tap the "LOGIN" button.
 
-![](https://i.ibb.co/M9X75YK/5.png)
+![](../images/0007/5.png)
 
 Challenge solved, once again.
 

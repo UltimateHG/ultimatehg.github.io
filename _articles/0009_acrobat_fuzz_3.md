@@ -23,7 +23,7 @@ We thought that by fixing these issues our worries would have mostly gone away, 
 
 Let's begin with fixing `JP2KImageDecodeTileInterleaved`. The reason it returned 8, we figured, was likely because it wasn't correctly decoding the image. This brings us to point #2: nop0 was doing something and we didn't implement it. Turned out, my intuition was pretty spot-on, and nop0, nop1 and nop3 (nop2 is a function that just returns 0) all had a role to play in ensuring that `JP2KImageDecodeTileInterleaved` worked the way it was supposed to work. Let's start by taking a look at nop0 in IDA:
 
-![](https://i.ibb.co/hmDdWT0/1.png)
+![](../images/0009/1.png)
 
 This is a rather confusing block of code. `custom_setter()` is a weird wrapper around some functions, which from further analysis seemed to be memory-related functions like `malloc` etcetera. We concluded that essentially what nop0 was doing was that it created a struct of size 0x14, held 2 pointers both `malloc`'d to the input size and then set its third and fourth variable (v1[3] and v1[4], because v1[0] is a pointer to itself) to the input size. So we ended up with a nop0 that looked something like this:
 ```c
@@ -41,7 +41,7 @@ void* nop0(int size) {
 
 We then ran the harness with only nop0 implemented, and the harness would crash at the next point: right after calling nop1. So we looked at nop1 in IDA as well to figure out how to implment it:
 
-![](https://i.ibb.co/7vdrHdR/2.png)
+![](../images/0009/2.png)
 
 It has an `if` statement surrounding some code that throws an error, but we're mainly interested in what's not included in the exception (which is that the input did not exist): `return *(_DWORD *)(a1 + 12)`. From looking through windbg, we can see that:
 ```
@@ -83,7 +83,7 @@ void* nop1(s1* nstruct){
 
 As mentioned, nop2 is just a function that does nothing -- an actual nop function. When opening up in IDA, all it does is `return 0`. We now execute the harness, and hooray -- the harness now moves past nop1, but it now crashes after executing nop3, which means we have to implement nop3 as well. Looking at nop3 in IDA we see this:
 
-![](https://i.ibb.co/yqZv2jC/3.png)
+![](../images/0009/3.png)
 
 Once again, it makes use of the annoying hard-to-reverse wrapper around memory functions. This time, it checks if the input pointer and its second element exists, then frees all of them. So effectively it's just a wrapper around `free()` that takes in a pointer to a struct and frees everything inside the struct. But we still need to find out what input value it takes, so we once again fire up windbg and this time we set a breakpoint at nop3:
 ```
