@@ -12,3 +12,5 @@ public
 dist
 
 _unpublished
+
+yarn.lock
