@@ -1,0 +1,206 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>STACK CTF 2020 - Mobile Challenges: Part 1</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        STACK CTF 2020 - Mobile Challenges: Part 1
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Challenge 1: Contact Us! | Challenge 2: Subscribe!
+        </h2>
+      
+      <time id="article-date">
+        2020.12.09
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#challenge-1%3A-contact-us!">Challenge 1: Contact Us!</a><ul><li><a href="#description">Description</a><li><a href="#surveying-our-target">Surveying Our Target</a><li><a href="#decompiling-the-apk">Decompiling The APK</a><li><a href="#reverse-engineering%3F">Reverse Engineering?</a></ul><li><a href="#challenge-2%3A-subscribe!">Challenge 2: Subscribe!</a><ul><li><a href="#description-1">Description</a><li><a href="#surveying-the-target">Surveying The Target</a><li><a href="#jadx%2C-once-again">JADX, once again</a></ul><li><a href="#afterword">Afterword</a></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>Over a 3-day period from 4-6th December, I participated in yet another CTF, but this time with a different team than the one I was most used to. Just a little background information for context: I also participated in Cyber Defenders Discovery Camp 2020 (CDDC 2020) with my team, Astronomia, and managed to clinch the 2nd runner up award. However, this time round half the members were busy so I teamed up with just one other Astronomia member and some highly promising juniors. I have to be honest, I was disappointed with my performance in the CTF, but hey, it was still a fun nonetheless. After all, that moment of euphoria when I press the submit button with a flag I just found and it successfully submits is something that never gets old. In this series of writeups, I will be explaining all the mobile (Android) challenges that I managed to solve and my thought process, as well as some bonus methods to solve (or “cheat”) the flag. :)</p>
+<p>This will be a multipart series as the writeups for some of the challenges are quite long. I will make the writeups as standalone as possible, meaning you won’t need to read one writeup to understand another, so there could be some things repeated</p>
+<p>Well, let’s dillydally no further and jump right into the mobile challenges. I will be covering Challenge 1: Contact Us! and Challenge 2: Subscribe! in this first part of the writeups. These are 2 extremely short and simple challenges so the writeup won’t go too much into detail, but I will still go as slowly as possible.</p>
+<h1 id="challenge-1%3A-contact-us!"tabindex="-1">Challenge 1: Contact Us!</h1>
+<h2 id="description"tabindex="-1">Description</h2>
+<blockquote>
+<p>Looks like Korovax has exposed some development comment lines accidentally. Can you get one of the secrets through this mistake?</p>
+</blockquote>
+<h2 id="surveying-our-target"tabindex="-1">Surveying Our Target</h2>
+<p>From the description of the challenge, we can tell that there are some comment lines or debug logs that we can try to access to solve the challenge. Our first step would be to open up the application and see what we can do. After opening the app, we are greeted with this home screen:</p>
+<p><img src="../images/0004/1.png"alt=""loading="lazy"decoding="async"></p>
+<p>We see that there are 4 buttons, and in the bottom right corner there is a “Contact Us” button. That seems like a good place to start, since that is the name of the challenge. We tap into that and we get this screen:</p>
+<p><img src="../images/0004/2.png"alt=""loading="lazy"decoding="async"></p>
+<p>The textbox for “Contact Number” seems to have some text in there, and it says:</p>
+<pre class="hljs"><code>Sarah to Samuel: Cheat code is abracadabra. Remember to remove it before the CTF!
+</code></pre>
+<p>Huh, let’s try inputting <code>abracadabra</code> into the textbox above for “name” then.</p>
+<p><img src="../images/0004/3.png"alt=""loading="lazy"decoding="async"></p>
+<p>Ah, we’re greeted by a Toast saying: <code>The answer is already out if you have been checking something!</code></p>
+<p>Checking something… something… perhaps the debug log or the decompiled code?</p>
+<h2 id="decompiling-the-apk"tabindex="-1">Decompiling The APK</h2>
+<p>Let’s decompile the APK with JADX-GUI, which is one of the most popular tools used to decompile Android APKs. We open the APK and are greeted with many many packages, but one of them is named <code>sg.gov.tech.ctf.mobile</code>, so that looks like where we should start. We need to find the view that we are looking at first. We expand that to find a package called <code>Contact</code>, so let’s expand that, and sure enough, this is the class that controls the view we are looking at.</p>
+<p>Clicking on it brings up the decompiled code, but we’re mainly interested in the part that handles the first “Submit” button, which then leads us to this part of the code:</p>
+<pre class="hljs"><code>((Button) findViewById(R.id.submit_button)).setOnClickListener(<span class="hljs-keyword">new</span> <span class="hljs-title class_">a</span>());
+</code></pre>
+<p>The <code>OnClickListener</code> for <code>R.id.submit_button</code> is set to a new object <code>a</code>, so let’s look at this class. We are mainly interested in the <code>onClick()</code> component as that is what handles the logic of pressing the submit button:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">onClick</span><span class="hljs-params">(View v)</span> {
+  <span class="hljs-type">String</span> <span class="hljs-variable">enteredFlagString</span> <span class="hljs-operator">=</span> ((EditText) ContactForm.<span class="hljs-built_in">this</span>.findViewById(R.id.editText_name)).getText().toString();
+    <span class="hljs-type">int</span> <span class="hljs-variable">toPad</span> <span class="hljs-operator">=</span> <span class="hljs-number">16</span> - (enteredFlagString.length() % <span class="hljs-number">16</span>);
+    <span class="hljs-keyword">if</span> (toPad != <span class="hljs-number">16</span>) {
+      <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt; toPad; i++) {
+        enteredFlagString = enteredFlagString + <span class="hljs-string">&quot; &quot;</span>;
+      }
+    }
+    <span class="hljs-type">int</span> <span class="hljs-variable">flagStatus</span> <span class="hljs-operator">=</span> ContactForm.<span class="hljs-built_in">this</span>.retrieveFlag2(enteredFlagString, enteredFlagString.length());
+    <span class="hljs-keyword">if</span> (flagStatus == <span class="hljs-number">0</span>) {
+      Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;The answer is already out if you have been checking something!&quot;</span>, <span class="hljs-number">0</span>).show();
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (flagStatus == <span class="hljs-number">2</span>) {
+      c.<span class="hljs-type">a</span> <span class="hljs-variable">builder</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">c</span>.a(ContactForm.<span class="hljs-built_in">this</span>);
+      <span class="hljs-type">View</span> <span class="hljs-variable">view</span> <span class="hljs-operator">=</span> LayoutInflater.from(ContactForm.<span class="hljs-built_in">this</span>).inflate(R.layout.custom_alert, (ViewGroup) <span class="hljs-literal">null</span>);
+      ((TextView) view.findViewById(R.id.RES_2131296615)).setText(<span class="hljs-string">&quot;Congrats!&quot;</span>);
+      ((TextView) view.findViewById(R.id.alert_detail)).setText(<span class="hljs-keyword">new</span> <span class="hljs-title class_">f</span>.a.a.a.a.b.a().a());
+      builder.h(<span class="hljs-string">&quot;Proceed&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">DialogInterface$OnClickListenerC0070a</span>());
+      builder.f(<span class="hljs-string">&quot;Close&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">b</span>());
+      builder.k(view);
+      builder.l();
+      Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Correct Password!&quot;</span>, <span class="hljs-number">0</span>).show();
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (flagStatus == <span class="hljs-number">1</span>) {
+      Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Password is wrong!&quot;</span>, <span class="hljs-number">0</span>).show();
+    } <span class="hljs-keyword">else</span> {
+      Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Something is wrong!&quot;</span>, <span class="hljs-number">0</span>).show();
+    }
+}
+
+</code></pre>
+<p>We see that the part that we need to control is the particular variable called <code>flagStatus</code>. That is what decides whether or not the success code runs or we get “Password is wrong!” etcetera. And we also know that <code>flagStatus</code> is controlled by the return value of the function <code>retrieveFlag2()</code>, so let’s take a look at how it’s defined:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">native</span> <span class="hljs-type">int</span> <span class="hljs-title function_">retrieveFlag2</span><span class="hljs-params">(String str, <span class="hljs-type">int</span> i)</span>;
+</code></pre>
+<p>Looks like it’s a native function. If you don’t know what a native function is in Java, basically Java has a programming interface called the Java Native Interface (JNI), which allows for writing Java native methods and embedding the Java virtual machine into native applications. Simply put, a native function is a function that has been defined in a library compiled from languages such as C, C++ and assembly. JADX-GUI is unable to directly display native function definitions, but that doesn’t matter in this case. Let’s do a blind shot at catching the relevant log. I will try to <code>logcat</code> my device running the app with the tag <code>JNI</code> and see if that brings up anything:</p>
+<pre class="hljs"><code>C:\Users\User&gt;adb logcat sg.gov.tech.ctf.mobile:V -s &quot;JNI&quot; *:S
+--------- beginning of crash
+--------- beginning of system
+--------- beginning of main
+12-11 14:25:07.156 10921 10921 D JNI     : Sarah to Samuel: You should see this with the cheat code. Now 'Give me the flag' will literally give you the flag. 
+</code></pre>
+<p>Ok, let’s try inputting this into the “name” field instead:</p>
+<p><img src="../images/0004/4.png"alt=""loading="lazy"decoding="async"></p>
+<p>Bingo, that’s the flag right there.</p>
+<h2 id="reverse-engineering%3F"tabindex="-1">Reverse Engineering?</h2>
+<p>But hey, that method seemed a bit guessy. What if our blind guessing did not hit any jackpots? Fret not, there is a more systematic way to approach this that actually requires no guessing at all. Remember earlier we talked about <code>native</code> functions? If we unpacked the APK we should be able to find the library that <code>JNI</code> is referencing for its <code>native</code> functions. For that, we will need to use something like APKTool to unpack the APK.</p>
+<pre class="hljs"><code>$ apktool d mobile-challenge.apk
+</code></pre>
+<p>This will unpack the APK into a folder called <code>mobile-challege</code>, and within there will be a <code>lib</code> folder. Inside this folder there should be folders containing libraries compiled for different architectures, but that isn’t too important so let’s just go with the <code>x86_64</code> architecture. We open up that folder and see our library <code>libnative-lib.so</code>. Let’s fire up IDA and try to find the function that we’re interested in:</p>
+<p><img src="../images/0004/5.png"alt=""loading="lazy"decoding="async"></p>
+<p>Right there, we see the call to <code>__android_log_print</code>, which is basically the native version of <code>Log.&lt;priority&gt;()</code>. We see that the priority is “3”, the tag is “JNI” and the log message is:</p>
+<pre class="hljs"><code>&quot;Sarah to Samuel: You should see this with the cheat code. Now 'Give me the flag' will literally give you the flag.&quot;
+</code></pre>
+<p>There, we have now achieved the same effect as before. Once again, we now simply put in “Give me the flag” into the “name” field and bingo.</p>
+<h1 id="challenge-2%3A-subscribe!"tabindex="-1">Challenge 2: Subscribe!</h1>
+<h2 id="description-1"tabindex="-1">Description</h2>
+<blockquote>
+<p>Korovax would like to keep its users informed about the latest updates of COViD, and there’s nothing better but to spam your emails!</p>
+</blockquote>
+<h2 id="surveying-the-target"tabindex="-1">Surveying The Target</h2>
+<p>From the description, we can tell that we need to find some place in the app that allows us to do something related to subscribing. Coincidentally, from the previous challenge, our “Contact Us” view seemed to have another field below for us to enter our email to subscribe:</p>
+<p><img src="../images/0004/2.png"alt=""loading="lazy"decoding="async"></p>
+<p>Nice.</p>
+<h2 id="jadx%2C-once-again"tabindex="-1">JADX, once again</h2>
+<p>Now we’re interested in the handling code for the “Subscribe” button. Within JADX-GUI, we see this line that sets the <code>OnClickListener</code> for the “Subscribe” button.</p>
+<pre class="hljs"><code>((Button) findViewById(R.id.subscribe_button)).setOnClickListener(<span class="hljs-keyword">new</span> <span class="hljs-title class_">b</span>());
+</code></pre>
+<p>Ah, now we’re interested in the <code>b</code> class. Let’s take a look at its <code>onClick()</code> component, as that contains the logic for handling the pressing of the “Subscribe” button:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">onClick</span><span class="hljs-params">(View v)</span> {
+  <span class="hljs-keyword">if</span> (ContactForm.<span class="hljs-built_in">this</span>.check(((EditText) ContactForm.<span class="hljs-built_in">this</span>.findViewById(R.id.editText_email)).getText().toString()) == <span class="hljs-number">0</span>) {
+    c.<span class="hljs-type">a</span> <span class="hljs-variable">builder</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">c</span>.a(ContactForm.<span class="hljs-built_in">this</span>);
+    <span class="hljs-type">View</span> <span class="hljs-variable">view</span> <span class="hljs-operator">=</span> LayoutInflater.from(ContactForm.<span class="hljs-built_in">this</span>).inflate(R.layout.custom_alert, (ViewGroup) <span class="hljs-literal">null</span>);
+    ((TextView) view.findViewById(R.id.RES_2131296615)).setText(<span class="hljs-string">&quot;Congrats!&quot;</span>);
+    ((TextView) view.findViewById(R.id.alert_detail)).setText(<span class="hljs-string">&quot;Well done!&quot;</span>);
+    builder.h(<span class="hljs-string">&quot;Proceed&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">a</span>());
+    builder.f(<span class="hljs-string">&quot;Close&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">DialogInterface$OnClickListenerC0071b</span>());
+    builder.k(view);
+    builder.l();
+    Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Flag is correct!&quot;</span>, <span class="hljs-number">0</span>).show();
+    <span class="hljs-keyword">return</span>;
+  }
+  Toast.makeText(ContactForm.<span class="hljs-built_in">this</span>.getApplicationContext(), <span class="hljs-string">&quot;Flag is wrong!&quot;</span>, <span class="hljs-number">0</span>).show();
+}
+
+</code></pre>
+<p>We see that we need to satisfy the condition of the <code>if</code> statement in order to reach the success code. It calls a function <code>check()</code> on our input. Let’s look at the definition for the function <code>check()</code>:</p>
+<pre class="hljs"><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">native</span> <span class="hljs-type">int</span> <span class="hljs-title function_">check</span><span class="hljs-params">(String str)</span>;
+</code></pre>
+<p>Oh, it is a <code>native</code> function as well. Similarly to before, after unpacking the APK with APKTool we find the relevant lib file and open it up in IDA, looking for the <code>check()</code> function:</p>
+<p><img src="../images/0004/6.png"alt=""loading="lazy"decoding="async"></p>
+<p>Well, that was surprisingly easy, our flag is right there: <code>govtech-csg{th3rE_15_nO_n0bIliTy_In_p0Vert7}</code>. Check basically just compares our input string to “<code>govtech-csg{th3rE_15_nO_n0bIliTy_In_p0Vert7}</code>”, and if they match exactly it will return 0, which sets <code>flatStatus</code> to 0 and satisfies the condition for reaching the success code.</p>
+<h1 id="afterword"tabindex="-1">Afterword</h1>
+<p>These were some pretty simple warmup challenges, so I hope you enjoyed the short part 1 to this long mobile challenge writeup series. The next few blog posts will go into quite a bit of detail on how to solve the remaining questions, so do read those if you’re interested.</p>
+<p>Thanks for reading.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/5.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">STACK CTF 2020 - Mobile Challenges: Part 2</p>
+                <p class="article-navigation-subtitle">Challenge 4: True or false?</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/3.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">Learning To Harness: Custom Stream Decoders</p>
+                <p class="article-navigation-subtitle">Part 2: Reverse Engineering a Stream Decoder</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+

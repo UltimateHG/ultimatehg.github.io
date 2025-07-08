@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /navigation.*.html
+
+Sitemap: https://blog.uhg.sg/sitemap.xml

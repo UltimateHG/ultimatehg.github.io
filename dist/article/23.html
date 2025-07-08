@@ -1,0 +1,369 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>A Deep Dive into CVE-2023-28252</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        A Deep Dive into CVE-2023-28252
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Improper Exception Handling into Arbitrary Increment
+        </h2>
+      
+      <time id="article-date">
+        2025.05.29
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#blf">BLF</a><li><a href="#analysis-of-the-vulnerability">Analysis of The Vulnerability</a><ul><li><a href="#high-level-overview">High-level Overview</a><li><a href="#the-root-cause">The Root Cause</a><li><a href="#code-path">Code Path</a><li><a href="#the-primitive">The Primitive</a></ul><li><a href="#crafting-a-poc">Crafting a POC</a><ul><li><a href="#afterword">Afterword</a><li><a href="#references-(non-exhaustive)">References (non-exhaustive)</a></ul></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>I haven’t been active for a while because of school and many other things (procrastination being one of them), but as I’ve returned to intern at a vulnerability research company, I’ve had the chance to look into some interesting vulnerabilities. I’ve wanted to learn Windows Kernel for the longest time so this was a pretty good opportunity to throw myself straight into it.</p>
+<p>One particular vulnerability that caught my eye was CVE-2023-28252. It is a vulnerability that was exploited in-the-wild and had many different reports on it. Fortra published a POC and many companies (fortra, kapersky, google project zero, etc.) did an analysis on this, so I thought it would be a quick dive, but the more I looked into it, the more I realized 2 things:</p>
+<ol>
+<li>Existing writeups mostly approach it from a malware analysis point of view, not an attacker’s point of view</li>
+<li>No writeups actually understand the way to obtain the primitive</li>
+</ol>
+<p>This is actually quite evident in a <em>certain</em> POC that I looked at, where values that didn’t need to be patched were being patched and the comments in the code were explaining things wrong. In fact, I know as a fact that it was copied from decompiled malware because there were obvious artifacts left inside like a <code>RunPayload()</code> function that was never called and variables like <code>v53</code>.</p>
+<p>For the purposes of making the writeup less cluttered, the following “shorter” forms would be used:</p>
+<pre class="hljs"><code>Within CClfsBaseFilePersisted class:
+CClfsBaseFilePersisted::WriteMetadataBlock -&gt; WriteMetadataBlock
+CClfsBaseFilePersisted::ReadMetadataBlock -&gt; ReadMetadataBlock
+CClfsBaseFilePersisted::ExtendMetadataBlock -&gt; ExtendMetadataBlock
+CClfsBaseFilePersisted::AddContainer -&gt; AddContainer
+CClfsBaseFilePersisted::AddSymbol -&gt; AddSymbol
+CClfsBaseFilePersisted::AllocSymbol -&gt; AllocSymbol
+CClfsBaseFilePersisted::OpenImage -&gt; OpenImage
+CClfsBaseFilePersisted::ReadImage -&gt; ReadImage
+CClfsBaseFilePersisted::CreateImage -&gt; CreateImage
+
+Within CClfsBaseFile class:
+CClfsBaseFile::GetControlRecord -&gt; GetControlRecord
+CClfsBaseFile::FindSymbol -&gt; FindSymbol
+</code></pre>
+<h1 id="blf"tabindex="-1">BLF</h1>
+<p>There are already many good resources out there detailing the Common Log File System (CLFS) driver internals such as <a href="https://github.com/ionescu007/clfs-docs/">Alex Ionescu’s clfs-docs</a> and many more, but I will briefly walk through the structure of BLF files for the specific purpose of this vulnerability.</p>
+<p>BLF files are created by CLFS and consists of 6 metadata blocks:</p>
+<pre class="hljs"><code>0x0    :    Control
+0x400  :    Control Shadow
+0x800  :    Base
+0x8200 :    Base Shadow
+0xFC00 :    Truncate
+0xFE00 :    Truncate Shadow
+</code></pre>
+<p>The “shadow” blocks are backup copies of the main block and are used in case any corruption is detected in the main blocks.</p>
+<p>Important offsets are as follows:</p>
+<p>Control/Control Shadow</p>
+<pre class="hljs"><code>Control Block
+* 0x4 → TotalSectors   // Total no. of sectors (2)
+* 0x6 → ValidSectors   // No. of valid sectors
+* 0x70 → DumpCount     // Pseudo-&quot;version&quot; number, higher = newer
+* 0x84 → eExtendState  // CLFS_EXTEND_STATE enum
+* 0x88 → iExtendBlock  // Index of block being extended
+* 0x8A → iFlushBlock   // Index of block being flushed to disk
+
+Control Shadow Block
+* 0x406 → ValidSectors
+* 0x470 → DumpCount
+* 0x484 → eExtendState
+* 0x488 → iExtendBlock
+* 0x48A → iFlushBlock
+
+CLFS_EXTEND_STATE : unsigned int32
+{
+ClfsExtendStateNone          = 0x0,
+ClfsExtendStateExtendingFsd  = 0x1,
+ClfsExtendStateFlushingBlock = 0x2,
+};
+</code></pre>
+<p>Base/Base Shadow</p>
+<pre class="hljs"><code>Base Block
+* 0x1B98 -&gt; cbSymbolZone // Size of symbol zone
+
+Base Shadow Block
+* 0x9598 -&gt; cbSymbolZone // Size of symbol zone
+</code></pre>
+<p>I strongly suggest going through the docs from above or other writeups for a more detailed explanation on file structure. However, the above knowledge is sufficient to understand the high-level concept behind CVE-2023-28252.</p>
+<h1 id="analysis-of-the-vulnerability"tabindex="-1">Analysis of The Vulnerability</h1>
+<h2 id="high-level-overview"tabindex="-1">High-level Overview</h2>
+<p>This vulnerability is caused by <strong>improper handling of exceptions</strong> leading to arbitrary increment that exists within the Windows <code>clfs.sys</code> driver.</p>
+<p>Unlike what many analysis reports state, the root cause is <strong>not</strong> arbitrary read/write, heap overflow, OOB read/write, nor arbitrary increment. The arbitrary increment is a <strong>primitive</strong> that we can make use of due to the <strong>improper handling of exceptions</strong> within the <code>WriteMetadataBlock</code> function.</p>
+<p>The vulnerability exists in the <code>WriteMetadataBlock</code> function. As the return value of <code>ClfsEncodeBlock</code> is not checked, even if it errors out, execution of <code>WriteMetadataBlock</code> will continue to completion and return a handle.</p>
+<p>The way the exploit works is to make use of <code>ClfsDecodeBlock</code>’s CRC check to zero out the CRC of the CONTROL block, then making use of a subsequent <code>WriteMetadataBlock</code> -&gt; <code>ClfsEncodeBlock</code> call to flush the invalid CONTROL block to disk, which in turn causes subsequent attempts to load the CONTROL record error out and use a malicious user-controllable CONTROL_SHADOW block instead.</p>
+<p>This allows us to supplement our own <code>iFlushBlock</code> value, which is used to access an offset from a struct in kernel memory. This accessed value is then incremented, giving us our <strong>arbitrary increment</strong> primitive.</p>
+<h2 id="the-root-cause"tabindex="-1">The Root Cause</h2>
+<p>Within <code>ReadMetadataBlock</code>, <code>ClfsDecodeBlock</code> is called, which would set the in-memory checksum of the CONTROL header to 0:</p>
+<p><img src="../images/0023/11.png"alt="image"loading="lazy"decoding="async"></p>
+<p>If decoding of the block is successful, the checksum would remain as 0 in memory while the block is being processed. The checksum is then calculated and set again before it is flushed to disk. We can see in <code>WriteMetadataBlock</code>, <code>ClfsEncodeBlock</code> is called, which in turn sets the checksum:</p>
+<p><img src="../images/0023/12.png"alt="image"loading="lazy"decoding="async"></p>
+<p>If any part errors out, <strong>the checksum remains at 0</strong> and an error is returned. This is where the vulnerability happens. We look back at <code>WriteMetadataBlock</code>:</p>
+<p><img src="../images/0023/13.png"alt="image"loading="lazy"decoding="async"></p>
+<p><code>ClfsDecodeBlock</code> is called and <strong>its return value is not checked!</strong> Execution would continue and <code>CClfsContainer::WriteSector</code> would execute, flushing the CONTROL block in memory to disk, <strong>including the zeroed out checksum</strong>.</p>
+<p>The next time <code>ReadMetadataBlock</code> is called, it would fail when trying to read the corrupted CONTROL block (invalid checksum) and attempt to search for a CONTROL_SHADOW block. If the attacker supplies a valid CONTROL_SHADOW block with a malicious <code>iFlushBlock</code> value, it will be loaded into memory successfully and subsequently used by the driver.</p>
+<p>Let’s explore the code path to understand how different parts of the code are reached and how the vulnerability can be used to achieve our primitive.</p>
+<h2 id="code-path"tabindex="-1">Code Path</h2>
+<p>Through debugging a skeleton application that only calls <code>CreateLogFile</code>, I found out that the execution path when creating a new log file is something like this:</p>
+<pre class="hljs"><code>CClfsLogFcbPhysical::Initialize
+→ OpenImage
+→ CreateImage
+→ WriteMetadataBlock
+</code></pre>
+<p>OpenImage is not seen in the callstack when I was debugging but we can simply step through from <code>CClfsLogFcbPhysical::Initialize</code> and we will see that <code>CreateImage</code> is actually called through <code>OpenImage</code></p>
+<p>On the other hand, if <code>CreateLogFile</code> opens an existing file, it would be something like:</p>
+<pre class="hljs"><code>CClfsLogFcbPhysical::Initialize
+→ OpenImage
+→ ReadImage
+→ ReadMetadataBlock
+→ ExtendMetadataBlock   // If eExtendState != ClfsExtendStateNone
+→ WriteMetadataBlock    // If eExtendState = ClfsExtendStateFlushingBlock
+</code></pre>
+<p>Even though the vulnerability is within <code>WriteMetadataBlock</code>, through debugging POCs I found online and playing around with CLFS I found out that the only way to ensure the CONTROL record is attempted to be read again (which would then load our malicious CONTROL_SHADOW into memory) after corrupting the CONTROL block with the first <code>WriteMetadataBlock</code> call is making sure that <code>GetControlRecord</code> is called.</p>
+<p>We can look at the XREF for <code>GetControlRecord</code> in IDA:</p>
+<p><img src="../images/0023/1.png"alt="image"loading="lazy"decoding="async"></p>
+<p>We can see above that <code>ExtendMetadataBlock</code> calls our desired function. In theory (and also seen in the ITW malware), we just need to ensure that we call <code>ExtendMetadataBlock</code> in order to guarantee our <code>GetControlRecord</code> and <code>WriteMetadataBlock</code> calls.</p>
+<p>Thus, after we manage to obtain our patched BLF file one way or another, we would want to reopen it with <code>CreateLogFile</code> so that it would be read (thus corrupting the CONTROL block), then somehow reach <code>ExtendMetadataBlock</code> -&gt; <code>GetControlRecord</code> -&gt; <code>WriteMetadataBlock</code> again to load our malicious CONTROL_SHADOW into memory.</p>
+<p>This can be done in user code by calling <code>AddLogContainer</code> and making sure that it calls <code>ExtendMetadataBlock</code>. Since we would have already called <code>CreateLogFile</code> to read and corrupt our CONTROL block, we can just use the handle returned by <code>CreateLogFile</code> to call <code>AddLogContainer</code>.</p>
+<p>There is one caveat here: <code>AddLogContainer</code> does not call <code>ExtendMetadataBlock</code> by default, we need to somehow force it to also trigger <code>ExtendMetadataBlock</code>. We already know we can’t patch the BLF file again at this juncture since it has already been loaded into memory by <code>CreateLogFile</code>, so we have to take a look at the code execution flow of <code>AddLogContainer</code>. I found out that it was something like this:</p>
+<pre class="hljs"><code>Win32 API AddLogContainer
+→ CClfsLogFcbPhysical::AllocContainer
+→ AddContainer
+→ AddSymbol
+→ FindSymbol (returns 0xC0000023)    // Obtained from AllocSymbol
+→ AllocSymbol (returns 0xC0000023)
+→ ExtendMetadataBlock                { This part is only reachable if error 0xC0000023
+→ WriteMetadataBlock                 { is returned
+</code></pre>
+<p>In <code>CClfsLogFcbPhysical::AllocContainer</code>:</p>
+<p><img src="../images/0023/2.png"alt="image"loading="lazy"decoding="async"></p>
+<p>In <code>AddContainer</code>:</p>
+<p><img src="../images/0023/3.png"alt="image"loading="lazy"decoding="async"></p>
+<p>We take a look at <code>AddSymbol</code> in IDA:</p>
+<p><img src="../images/0023/4.png"alt="image"loading="lazy"decoding="async"></p>
+<p>We see that on line 19, it calls <code>FindSymbol</code> and saves the result to a variable, and it then checks whether the result is &gt;= 0. If the result has no error (&gt;= 0), it jumps to LABEL_4 which then jumps to END, skipping past <code>ExtendMetadataBlock</code> entirely. Since we want it to execute <code>ExtendMetadataBlock</code>, we need to get a specific error (<code>0xC0000023</code>) on <code>FindSymbol</code>, since the return result is checked again against <code>0xC0000023</code> on line 25, jumping to END if it isn’t equal.</p>
+<p>Taking a look at <code>FindSymbol</code>, we can see many different error codes, but <code>0xC0000023</code> seems to be missing. There is however one line of code that we can see:</p>
+<p><img src="../images/0023/5.png"alt="image"loading="lazy"decoding="async"></p>
+<p>It calls a function from the input vftable called “AllocSymbol”. While a search in IDA we can find <code>CClfsBaseFilePersisted::AllocSymbol</code>, we can’t be completely sure, so we hop into the debugger and set a breakpoint at <code>FindSymbol</code>, we can see the vftable being passed in:</p>
+<p><img src="../images/0023/6.png"alt="image"loading="lazy"decoding="async"></p>
+<p>At offset <code>0x18</code>, we see <code>CClfsBaseFilePersisted::AllocSymbol</code>.</p>
+<p>Looking inside <code>AllocSymbol</code>:</p>
+<p><img src="../images/0023/7.png"alt="image"loading="lazy"decoding="async"></p>
+<p>We can now see <code>0xC0000023</code> being returned if we fail the check at line 23. In order to fail the check, we just have to make sure <code>cbSymbolZone</code> + <code>cSize</code> puts the pointer past the end of the current block.</p>
+<p>One thing to note is that within <code>OpenImage</code>, we can see that in order for <code>ExtendMetadatBlock</code> to be called, <code>eExtendState</code> needs to be != 0 or the function would just end:</p>
+<p><img src="../images/0023/8.png"alt="image"loading="lazy"decoding="async"></p>
+<p>Where ClfsExtendStateNone is the enum for 0.
+We can also see that it checks the values of <code>iExtendBlock</code> and <code>iFlushBlock</code> such that in order to reach <code>ExtendMetadataBlock</code> we would have to ensure</p>
+<ol>
+<li><code>iExtendBlock</code> &gt; 0 and <code>iFlushBlock</code> &gt; 0</li>
+<li><code>iExtendBlock</code> &lt; 6</li>
+<li><code>iFlushBlock</code> &lt; 6 AND <code>iFlushBlock</code> &gt;= <code>iExtendBlock</code></li>
+<li><code>cExtendStartSectors</code> &lt; Total no. of sectors</li>
+<li><code>cNewBlockSectors</code> &lt; Total no. of sectors + sectors to extend</li>
+</ol>
+<p>4 and 5 are automatically ensured for us as long as we don’t tamper with it, so we just need to ensure <code>iExtendBlock</code> and <code>iFlushBlock</code> meet the requirements.</p>
+<p>Within <code>ExtendMetadataBlock</code>, we can see this block that checks for <code>eExtendState</code>:</p>
+<p><img src="../images/0023/9.png"alt="image"loading="lazy"decoding="async"></p>
+<p>Where the label END leads to <code>ExtendMetadataBlock</code> finishing execution and FLUSH leads to:</p>
+<p><img src="../images/0023/10.png"alt="image"loading="lazy"decoding="async"></p>
+<p>This is the <code>WriteMetadataBlock</code> that we need to reach, since as seen above we must have <code>eExtendState</code> != 0. We can also then see on line 192 above that we must have <code>eExtendState</code> = <code>ClfsExtendStateFlushingBlock</code> in order for the code to proceed.</p>
+<p>Now that we know how to trigger our desired code path twice, let’s understand the primitive that can be used to exploit this.</p>
+<h2 id="the-primitive"tabindex="-1">The Primitive</h2>
+<p>The primitive that was used here lies within the <code>WriteMetadataBlock</code> function. After obtaining an offset to a metadata block (CONTROL, BASE, etc.), the code attempts to increment <code>header-&gt;ullDumpCount</code>, whose offset is stored at <code>header-&gt;RecordOffsets[0]</code> (fixed at 0x70):</p>
+<p><img src="../images/0023/14.png"alt="image"loading="lazy"decoding="async"></p>
+<p>Within <code>ExtendMetadataBlock</code>, <code>iFlushBlock</code> is passed into <code>WriteMetadataBlock</code> as <code>itr</code>, which is used to obtain an address from <code>m_rgBlocks</code>. <code>pbImage</code> exists at offset 0 of <code>m_rgBlocks</code>, and <code>m_rgBlocks</code> is a struct of <code>0x30</code> size in memory. Thus, with this, we are able to reference an arbitrary address in memory.</p>
+<p><code>MajorVersion</code> here is just offset 0 of <code>clfs_log_block_header</code>, so it can be treated as a pointer to the start of the struct.</p>
+<p>Since <code>RecordOffsets[0]</code> is always <code>0x70</code> for metadata blocks, in line 37 we have an arbitrary increment on our controllable location of <code>clfs_log_block_header + 0x70</code>.</p>
+<h1 id="crafting-a-poc"tabindex="-1">Crafting a POC</h1>
+<p>To craft a POC, recalling from the analysis, we have to do the following things:</p>
+<ol>
+<li>
+<p>Create a log file that we can work with</p>
+</li>
+<li>
+<p>Patch the log file (Offset -&gt; Name in struct)</p>
+<p><strong>CONTROL Block</strong></p>
+<ul>
+<li>0x6 → Control.ValidSectors: 1
+<ul>
+<li>This causes <code>ValidSectors &lt; TotalSectors</code>, failing <code>ValidSectors == TotalSectors</code> check</li>
+<li>Causes ClfsDecodeBlock to fail</li>
+<li>Leaves zeroed checksum in memory</li>
+</ul>
+</li>
+<li>0x70 → Control.DumpCount: 2
+<ul>
+<li>Must be &gt;= ControlShadow.DumpCount</li>
+<li>This ensures CONTROL block is attempted to be read first, corrupting the checksum</li>
+</ul>
+</li>
+<li>0x84 → Control.eExtendState: 2
+<ul>
+<li>We use enum ClfsExtendStateFlushingBlock to pass the checks in <code>OpenImage</code> and <code>ExtendMetadataBlock</code></li>
+<li>This lets us reach <code>WriteMetadataBlock</code></li>
+</ul>
+</li>
+<li>0x88 → Control.iExtendBlock: 2
+<ul>
+<li>Nonzero value n, 1 &lt; n &lt; 6</li>
+<li>By default, there are 2 blocks, so indexes 0 and 1 already exist</li>
+</ul>
+</li>
+<li>0x8A → Control.iFlushBlock: 2
+<ul>
+<li>Nonzero value n, 1 &lt; n &lt; 6, n &gt;= <code>iExtendBlock</code></li>
+<li>We set this to be equals to <code>iExtendBlock</code> such that execution ends upon one execution of <code>WriteMetadataBlock</code></li>
+</ul>
+</li>
+<li>0x94 → Control.cExtendSectors: 1
+<ul>
+<li>Must be &gt;= 1 to trigger <code>ExtendMetadataBlock</code></li>
+</ul>
+</li>
+</ul>
+<p><strong>CONTROL_SHADOW Block</strong>:</p>
+<ul>
+<li>0x6 → ControlShadow.ValidSectors: 2
+<ul>
+<li>Ensure that it matches TotalSectors to pass <code>ValidSectors == TotalSectors</code> check</li>
+</ul>
+</li>
+<li>0x470 → ControlShadow.DumpCount: 1
+<ul>
+<li>Must be &lt;= Control.DumpCount</li>
+<li>This ensures CONTROL block is attempted to be read first</li>
+</ul>
+</li>
+<li>0x484 → ControlShadow.eExtendState: 2 (same as CONTROL)</li>
+<li>0x488 → ControlShadow.iExtendBlock: 0xBEEF
+<ul>
+<li>Can be any malicious value</li>
+</ul>
+</li>
+<li>0x48A → ControlShadow.iFlushBlock: 0xDEAD
+<ul>
+<li>Can be any malicious offset</li>
+</ul>
+</li>
+</ul>
+<p><strong>BASE Block</strong>:</p>
+<ul>
+<li>0x1B98 → BaseBlock.cbSymbolZone: 0x6543
+<ul>
+<li>Must be a value large enough to cause <code>AllocSymbol</code> error <code>0xC0000023</code></li>
+<li>Cannot be too large or it will be caught by other code</li>
+</ul>
+</li>
+</ul>
+<p><strong>BASE_SHADOW Block</strong>:</p>
+<ul>
+<li>0x9598 → BaseShadow.cbSymbolZone: 0x6543 (same as BaseBlock)</li>
+</ul>
+</li>
+<li>
+<p>Call <code>CreateLogFile</code> to corrupt CONTROL block</p>
+</li>
+<li>
+<p>Call <code>AddLogContainer</code> on returned handle to get OOB increment</p>
+</li>
+</ol>
+<p>In my POC, I do the following:</p>
+<ol>
+<li>Call <code>CreateLogFile</code> with <code>OPEN_ALWAYS</code> to create a log file</li>
+<li>Open the log file with <code>fopen</code> and patch values as seen above</li>
+<li>Call <code>CreateLogFile</code> again to open the patched log file, and keep the handle</li>
+<li>Call <code>AddLogContainer</code> on the handle from #3</li>
+</ol>
+<p>We can step into the debugger and see our malicious <code>iExtendBlock</code> and <code>iFlushBlock</code> in memory by setting breakpoints at <code>ExtendMetadataBlock</code>, <code>GetControlRecord</code> and <code>WriteMetadataBlock</code>, then once we reach <code>ExtendMetadataBlock</code> -&gt; <code>GetControlRecord</code> -&gt; <code>WriteMetadataBlock</code>, we take the value in $rcx (<code>CClfsBaseFilePersisted</code> object), examine the object and take the value at offset 0x30 (<code>pbImage</code>), then examine the pointer at either offset 0x0 or 0x30 (<code>rgBlocks</code> array -&gt; CONTROL/CONTROL_SHADOW struct pointer) to see the contents of CONTROL loaded into memory.</p>
+<pre class="hljs"><code>2: kd&gt; dps ffffc607`1568d280 l12
+ffffc607`1568d280  00020002`00010015
+ffffc607`1568d288  00000000`00000000
+ffffc607`1568d290  00000000`00000002
+ffffc607`1568d298  ffffffff`00000000
+ffffc607`1568d2a0  ffffffff`00000000
+ffffc607`1568d2a8  00000000`00000070
+ffffc607`1568d2b0  00000000`00000000
+ffffc607`1568d2b8  00000000`00000000
+ffffc607`1568d2c0  00000000`00000000
+ffffc607`1568d2c8  00000000`00000000
+ffffc607`1568d2d0  00000000`00000000
+ffffc607`1568d2d8  00000000`00000000
+ffffc607`1568d2e0  00000000`00000000
+ffffc607`1568d2e8  00000000`000003f8
+ffffc607`1568d2f0  00000000`00000001
+ffffc607`1568d2f8  c1f5c1f5`00005f1c
+ffffc607`1568d300  00000002`00000001
+ffffc607`1568d308  00000000`deadbeef    &lt;-- We see our malicious values here
+</code></pre>
+<p>We can see that after the magic number, in the area where <code>iExtendBlock</code> and <code>iFlushBlock</code> is supposed to be, <code>deadbeef</code> sits in memory.</p>
+<h2 id="afterword"tabindex="-1">Afterword</h2>
+<p>This was a fun and tiring journey as many writeups online lead to dead ends and incorrect information. I was finally able to find a writeup that explained the vulnerability from an attacker’s point of view which helped greatly, though at that point I was already on the cusp of finding out the information myself.</p>
+<p>Huge thanks to all the public resources out there, they assisted me greatly when I was learning CLFS internals.</p>
+<p>That’s all for now, maybe when I find something interesting again and stop procrastinating I’ll write another post.</p>
+<p>Thanks for reading.</p>
+<h2 id="references-(non-exhaustive)"tabindex="-1">References (non-exhaustive)</h2>
+<ul>
+<li><a href="https://github.com/ionescu007/clfs-docs">Unofficial CLFS Documentation</a></li>
+<li><a href="https://github.com/fortra/CVE-2023-28252/tree/master?tab=readme-ov-file">https://github.com/fortra/CVE-2023-28252/tree/master?tab=readme-ov-file</a></li>
+<li><a href="https://bbs.kanxue.com/thread-278241.htm">https://bbs.kanxue.com/thread-278241.htm</a></li>
+<li><a href="https://securelist.com/windows-clfs-exploits-ransomware-cve-2023-28252/111601/">https://securelist.com/windows-clfs-exploits-ransomware-cve-2023-28252/111601/</a></li>
+<li><a href="https://securelist.com/nokoyawa-ransomware-attacks-with-windows-zero-day/109483/">https://securelist.com/nokoyawa-ransomware-attacks-with-windows-zero-day/109483/</a></li>
+<li><a href="https://github.com/726232111/CVE-2023-28252/tree/main">https://github.com/726232111/CVE-2023-28252/tree/main</a></li>
+<li><a href="https://ti.qianxin.com/blog/articles/CVE-2023-28252-Analysis-of-In-the-Wild-Exploit-Sample-of-CLFS-Privilege-Escalation-Vulnerability/">https://ti.qianxin.com/blog/articles/CVE-2023-28252-Analysis-of-In-the-Wild-Exploit-Sample-of-CLFS-Privilege-Escalation-Vulnerability/</a></li>
+</ul>
+
+      </section>
+      <section id="article-navigation">
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/22.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">GreyCTF Qualifiers 2024 - Authors Writeup | Pwn</p>
+                <p class="article-navigation-subtitle">Baby Goods | Slingring Factory</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
