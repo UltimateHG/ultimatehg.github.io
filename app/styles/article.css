@@ -293,3 +293,7 @@
   display: inline;
 }
 
+.force-word-wrap pre code {
+   white-space: normal;
+   word-wrap: break-word;
+}
