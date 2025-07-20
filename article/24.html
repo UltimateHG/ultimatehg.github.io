@@ -1,0 +1,308 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CVE-2025-52689 Root Cause Analysis</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        CVE-2025-52689 Root Cause Analysis
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Alcatel-Lucent Enterprise AP1361D Wi-Fi Access Point Authentication Bypass Vulnerability
+        </h2>
+      
+      <time id="article-date">
+        2025.07.16
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#the-basics">The Basics</a><li><a href="#timeline">Timeline</a><li><a href="#the-code">The Code</a><li><a href="#the-vulnerability">The Vulnerability</a><ul><li><a href="#root-cause">Root Cause</a><li><a href="#high-level-overview">High-level Overview</a><li><a href="#execution-flow-analysis">Execution Flow Analysis</a><li><a href="#vulnerable-function-analysis">Vulnerable Function Analysis</a></ul><li><a href="#the-exploit">The Exploit</a><ul><li><a href="#exploit-strategy">Exploit strategy</a><li><a href="#exploit-flow">Exploit Flow</a><li><a href="#vulnerability-trigger-verification">Vulnerability Trigger Verification</a></ul><li><a href="#the-next-steps">The Next Steps</a><ul><li><a href="#detection">Detection</a><li><a href="#mitigations">Mitigations</a><li><a href="#variant-analysis">Variant analysis</a><li><a href="#afterword">Afterword</a><ul><li><a href="#huge-thanks-to">Huge thanks to</a></ul></ul></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>In August of 2024, I participated in SpiritCyber, a 0-day hacking competition held during Singapore International Cyber Week (SICW) 2024 with my team, Team SeeSeeTV. This was quite a fresh experience for me as I had never done vulnerability research on IoT devices before.</p>
+<p>This post details one of the vulnerabilities I found in the provided Alcatel-Lucent router.</p>
+<h1 id="the-basics"tabindex="-1">The Basics</h1>
+<p>Disclosure or Patch Date: <code>16 July 2025</code></p>
+<p>Product: <code>Alcatel-Lucent Enterprise AP1361D Wi-Fi Access Point</code></p>
+<p>Advisory: <a href="https://www.csa.gov.sg/alerts-and-advisories/alerts/al-2025-072">CSA Advisory</a> | <a href="https://www.al-enterprise.com/-/media/assets/internet/documents/sa-n0150-ed02-omniaccess-stellar-multiple-vulnerabilities.pdf">Alcatel-Lucent Security Advisory</a></p>
+<p>Affected Versions: <code>4.0.4</code> and possibly other earlier versions</p>
+<p>First Patched Version: <code>N/A. It will only be available on Alcatel's extranet which is only accessible to Business Partners. Hence, affected users have to reach out to their Business Partners to update their vulnerable product.</code></p>
+<p>Issue/Bug Report: <code>CVE-2025-52689</code></p>
+<p>Severity: <code>Critical</code></p>
+<p>Attack Type: <code>Network</code></p>
+<p>CVSS 3.1 Base Score: <code>9.8</code></p>
+<p>CVSS Vector: <code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</code></p>
+<p>Reporter(s): <code>uhg | Team SeeSeeTV (SpiritCyber 2025)</code></p>
+<h1 id="timeline"tabindex="-1">Timeline</h1>
+<ul>
+<li>2024-08-18: Report submitted to SpiritCyber IoT Hackathon triage team</li>
+<li>2024-08-18: Report accepted by triage team</li>
+<li>…</li>
+<li>2025-06-25: CSA assigns CVE-2025-52689</li>
+<li>2025-07-16: Public disclosure</li>
+</ul>
+<h1 id="the-code"tabindex="-1">The Code</h1>
+<p>Proof-of-concept: <a href="https://github.com/UltimateHG/CVE-2025-52689-PoC">On Github</a></p>
+<h1 id="the-vulnerability"tabindex="-1">The Vulnerability</h1>
+<h2 id="root-cause"tabindex="-1">Root Cause</h2>
+<p><strong>Bug class:</strong> <a href="https://cwe.mitre.org/data/definitions/1390.html">[CWE-1390] Weak Authentication</a></p>
+<p><strong>Vulnerability details:</strong> Exposed authentication endpoint performs verification with hardcoded values and keys, allowing an attacker to generate a valid set of authentication data and obtain an administrator session token without needing to know the login details of the administrator.</p>
+<h2 id="high-level-overview"tabindex="-1">High-level Overview</h2>
+<p>Authentication endpoint is exposed at <code>/echo.fcgi/api/login</code> to the network.</p>
+<p>Requests that reach the endpoint arrive at an authentication function, which checks 3 input variables before returning a valid administrator session token:</p>
+<ul>
+<li>X-API-App-Id
+<ul>
+<li>Hardcoded string <code>&quot;hyapiinterface&quot;</code></li>
+</ul>
+</li>
+<li>X-API-Timestamp
+<ul>
+<li>Checked to ensure it is within 5 minutes of system time</li>
+</ul>
+</li>
+<li>X-API-Signature
+<ul>
+<li>Checked against system-generated signature</li>
+<li>System-generated signature is obtained by hashing (HMAC-MD5) X-API-Timestamp with hardcoded key <code>&quot;hyadasdfasdf32eb&quot;</code></li>
+</ul>
+</li>
+</ul>
+<p>This allows for an attacker to generate a valid set of input variables and obtain a valid administrator session token.</p>
+<h2 id="execution-flow-analysis"tabindex="-1">Execution Flow Analysis</h2>
+<p>echo.fcgi handles login requests from the web admin interface. A request first arrives at <code>login_requests</code> (0xC308), which checks the requested endpoint against <code>/echo.fcgi/api/login</code> before calling the <code>api_login</code> function (0xB4CC):</p>
+<pre class="hljs"><code>...
+<span class="hljs-keyword">if</span> ( <span class="hljs-built_in">FCGX_GetParam</span>() &amp;&amp; (req_endpoint = <span class="hljs-built_in">FCGX_GetParam</span>()) != <span class="hljs-number">0</span> &amp;&amp; <span class="hljs-built_in">strstr</span>(req_endpoint, <span class="hljs-string">&quot;api/login&quot;</span>) )
+{
+  <span class="hljs-built_in">api_login</span>(a1);
+}
+...
+</code></pre>
+<p>Once we reach <code>api_login</code>, a few checks are performed and the response body is set with the appropriate result, after which the response is then returned to the sender of the request.</p>
+<pre class="hljs"><code>main
+-&gt; login_requests (sub_C308)
+-&gt; api_login (sub_B4CC)
+-&gt; get X-API-App-Id
+-&gt; get X-API-Timestamp
+-&gt; get X-API-Signature
+-&gt; check params
+-&gt; set response body
+</code></pre>
+<h2 id="vulnerable-function-analysis"tabindex="-1">Vulnerable Function Analysis</h2>
+<p>The vulnerability exists within <code>api_login (sub_B4CC)</code>, which is broken down below:</p>
+<p>The function starts by getting 3 parameters from the request content, we can tell what the variables are by looking at the log commands.</p>
+<pre class="hljs"><code>x_api_app_id = <span class="hljs-built_in">FCGX_GetParam</span>();
+app_id = x_api_app_id;
+<span class="hljs-keyword">if</span> ( x_api_app_id )   <span class="hljs-comment">// Check that app id exists</span>
+{
+  <span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;X-API-App-Id: %s from acm\n&quot;</span>, x_api_app_id);
+  x_api_timestamp = <span class="hljs-built_in">FCGX_GetParam</span>();
+  unix_timestamp = x_api_timestamp;
+  <span class="hljs-keyword">if</span> ( x_api_timestamp )    <span class="hljs-comment">// Check that timestamp exists</span>
+  {
+    <span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;X-API-Timestamp: %s from acm\n&quot;</span>, x_api_timestamp);
+    x_api_signature = <span class="hljs-built_in">FCGX_GetParam</span>();
+    signature = x_api_signature;
+    <span class="hljs-keyword">if</span> ( x_api_signature )    <span class="hljs-comment">// Check that signature exists</span>
+    {
+      <span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;X-API-Signature: %s from acm\n&quot;</span>, x_api_signature);
+      ...
+</code></pre>
+<p>First check is performed, <code>X-API-Timestamp</code> is checked to be within 5 minutes of system time.</p>
+<pre class="hljs"><code><span class="hljs-comment">// Check #1: Timestamp is within 300s (5 mins) of system time</span>
+<span class="hljs-keyword">if</span> ( <span class="hljs-built_in">atol</span>(unix_timestamp) &lt; sys_time - <span class="hljs-number">300</span> || <span class="hljs-built_in">atol</span>(unix_timestamp) &gt; sys_time + <span class="hljs-number">300</span> )
+{
+  <span class="hljs-comment">// ...Truncated code to set response body to failure message...</span>
+}
+</code></pre>
+<p>Second check is trivial, <code>X-API-App-Id</code> is checked against a hardcoded string <code>&quot;hyapiinterface&quot;</code>.</p>
+<pre class="hljs"><code><span class="hljs-comment">// Check #2: X-API-App-Id is &quot;hyapiinterface&quot;</span>
+<span class="hljs-keyword">if</span> ( !<span class="hljs-built_in">strcmp</span>(app_id, <span class="hljs-string">&quot;hyapiinterface&quot;</span>) )
+{
+  ...
+</code></pre>
+<p>After which, <code>X-API-Timestamp</code> is hashed with a HMAC-MD5 function and the output is converted to a string. Then, check #3 occurs where the hash is checked against <code>X-API-Signature</code>.</p>
+<pre class="hljs"><code>timestamp_len = <span class="hljs-built_in">strlen</span>(unix_timestamp);
+<span class="hljs-comment">// Hash input timestamp with HMAC-MD5, hardcoded key &quot;hyadasdfasdf32eb&quot;</span>
+<span class="hljs-comment">// THIS IS A MAJOR VULNERABILITY!</span>
+<span class="hljs-built_in">hmac_func</span>(unix_timestamp, timestamp_len, <span class="hljs-string">&quot;hyadasdfasdf32eb&quot;</span>, <span class="hljs-number">16</span>, hmac_hash);
+<span class="hljs-comment">// ...Truncated code to convert hmac_hash to a string...</span>
+<span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;hmac md5 sigtext: %s in ap\n&quot;</span>, hmac_hash_str);
+<span class="hljs-comment">// Check #3: Signature matches with hmac-md5 hash</span>
+<span class="hljs-keyword">if</span> ( <span class="hljs-built_in">strcmp</span>(signature, hmac_hash_str) )
+{
+  <span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;X-API-Signature error\n&quot;</span>);
+  <span class="hljs-comment">// Truncated code (signature error)</span>
+}
+...
+</code></pre>
+<p>We can see that once all the checks are passed, we reach the success code where a session id is generated, synced locally and then returned via the response body.</p>
+<pre class="hljs"><code><span class="hljs-comment">// Get relevant information</span>
+<span class="hljs-built_in">popen_wrap</span>(<span class="hljs-string">&quot;getmode&quot;</span>, &amp;apmode, <span class="hljs-number">0xA</span>u);
+<span class="hljs-built_in">popen_wrap</span>(<span class="hljs-string">&quot;/usr/sbin/showsysinfo | awk -F &#x27;MAC:&#x27; &#x27;/MAC/ {print $2}&#x27;&quot;</span>, mac_addr, <span class="hljs-number">0x32</span>u);
+<span class="hljs-built_in">popen_wrap</span>(<span class="hljs-string">&quot;showsysinfo | awk -F \&quot;License Control:\&quot; &#x27;/License Control/ {print $2}&#x27;&quot;</span>, license, <span class="hljs-number">0x41</span>u);
+apmode_str = <span class="hljs-built_in">get_apmode</span>(&amp;apmode, license);
+<span class="hljs-comment">// Generate session ID</span>
+generated_sessionId = <span class="hljs-built_in">generate_session_id</span>();
+<span class="hljs-built_in">strcpy</span>(sessionId, generated_sessionId);
+response = &amp;request[<span class="hljs-number">10</span> * v1];
+<span class="hljs-comment">// Set response body with success message</span>
+<span class="hljs-built_in">FCGX_FPrintF</span>(response-&gt;responseBody, <span class="hljs-string">&quot;Status: 200 OK\r\n&quot;</span>);
+<span class="hljs-built_in">FCGX_FPrintF</span>(response-&gt;responseBody, <span class="hljs-string">&quot;Content-Type: text/plain\r\n\r\n&quot;</span>);
+<span class="hljs-built_in">FCGX_FPrintF</span>(response-&gt;responseBody, <span class="hljs-string">&quot;\t{\&quot;id\&quot;:1,\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,&quot;</span>);
+<span class="hljs-comment">// Write new sessionId to local file /tmp/sessionId</span>
+<span class="hljs-keyword">if</span> ( (<span class="hljs-built_in">sync_sessionId</span>(<span class="hljs-string">&quot;Administrator&quot;</span>, sessionId, apmode_str) &amp; <span class="hljs-number">0x80000000</span>) != <span class="hljs-number">0</span> )
+{
+  responseContent = <span class="hljs-string">&quot;\&quot;error\&quot;:{\&quot;errorCode\&quot;:-1,\&quot;errorMessage\&quot;:\&quot;login_log_saveSessionid_error\&quot; }}\n&quot;</span>;
+}
+<span class="hljs-keyword">else</span>
+{
+  <span class="hljs-comment">// Set sessionId validity and save to local file /tmp/sessionId</span>
+  <span class="hljs-keyword">if</span> ( (<span class="hljs-built_in">sync_sessionId_validity</span>(<span class="hljs-string">&quot;Administrator&quot;</span>) &amp; <span class="hljs-number">0x80000000</span>) == <span class="hljs-number">0</span> )
+  {
+    <span class="hljs-comment">// Append sessionId and other information to response body</span>
+    <span class="hljs-built_in">FCGX_FPrintF</span>(
+      response-&gt;responseBody,
+      <span class="hljs-string">&quot;\&quot;result\&quot;:{\&quot;success\&quot;:\&quot;true\&quot;,\&quot;username\&quot;:\&quot;Administrator\&quot;,\&quot;sessionId\&quot;:\&quot;%s\&quot;,\&quot;apmac\&quot;:\&quot;%s\&quot;,\&quot;&quot;</span>
+      <span class="hljs-string">&quot;apmode\&quot;:\&quot;%s\&quot;,\&quot;syncmsgs\&quot;:&quot;</span>,
+      sessionId,
+      mac_addr,
+      &amp;apmode);
+    <span class="hljs-built_in">lighttpd_log</span>(<span class="hljs-string">&quot;sessionId %s, apmac %s, apmode %s\n&quot;</span>, sessionId, mac_addr, &amp;apmode);
+    ...
+</code></pre>
+<p>As such, username and password is not checked at all, and we can see that the only 3 checks within the login API function are easily bypassable by an attacker.</p>
+<h1 id="the-exploit"tabindex="-1">The Exploit</h1>
+<h2 id="exploit-strategy"tabindex="-1">Exploit strategy</h2>
+<p>Send an authentication request to the vulnerable endpoint with a specially-crafted payload to obtain a valid administrator session token. This token can then be used to send any API request to the router.</p>
+<h2 id="exploit-flow"tabindex="-1">Exploit Flow</h2>
+<ol>
+<li>Send any HTTP request to the router’s web interface to obtain a timestamp from the default HTTP response header</li>
+<li>Adjust timestamp to match server</li>
+<li>Generate HMAC-MD5 hash</li>
+<li>Send forged request to <code>/echo.fcgi/api/login</code> with the following
+<ul>
+<li><code>X-API-App-Id</code>: <code>hyapiinterface</code></li>
+<li><code>X-API-Timestamp</code>: Server timestamp</li>
+<li><code>X-API-Signature</code>: Generated hash</li>
+</ul>
+</li>
+<li>Obtain valid admin session token</li>
+<li>Send any admin panel request with obtained token</li>
+</ol>
+<h2 id="vulnerability-trigger-verification"tabindex="-1">Vulnerability Trigger Verification</h2>
+<p>After sending the following request:</p>
+<p><img src="../images/0024/exploit_request_1.png"alt=""loading="lazy"decoding="async"></p>
+<p>We receive a response containing an admin session token:</p>
+<p><img src="../images/0024/exploit_request_2.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can also verify that we obtained a valid admin session token by checking the /tmp/sessionId file on the router:</p>
+<p><img src="../images/0024/admin_session.png"alt=""loading="lazy"decoding="async"></p>
+<p>To prove we are able to send arbitrary web panel requests to the router, we can send a HTTP request to add MAC address <code>DE:AD:BE:EF:10:01</code> to the blacklist (“blocklist”):</p>
+<p><img src="../images/0024/exploit_request_3.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can see it reflected within our web panel as well:</p>
+<p><img src="../images/0024/web_interface_deadbeef1001.png"alt=""loading="lazy"decoding="async"></p>
+<p>We can also see relevant functions being called and verification succeeding within the lighttpd logs (/var/log/lighttpd/cgi.log):</p>
+<p><img src="../images/0024/lighttpd_log.png"alt=""loading="lazy"decoding="async"></p>
+<h1 id="the-next-steps"tabindex="-1">The Next Steps</h1>
+<h2 id="detection"tabindex="-1">Detection</h2>
+<p>Lighttpd API requests are logged within the router’s file system at /var/log/lighttpd/cgi.log. Using the following legend:</p>
+<pre class="hljs"><code>TIMESTAMP: System timestamp, in format YYYY-MM-DD HH:MM:SS
+UNIX_TIME: Unix timestamp
+SIGNATURE: Generated signature from timestamp
+ADM_TKN: Admin session token
+MAC_ADDR: MAC address of router
+APMODE: AP mode of router
+####: Any integer
+</code></pre>
+<p>The following set of strings should be generated within the logs any time authentication is done:</p>
+<pre class="hljs"><code>...
+[TIMESTAMP]parseAcmInfo
+[TIMESTAMP]X-API-App-Id: hyapiinterface from acm
+[TIMESTAMP]X-API-Timestamp: UNIX_TIME from acm
+[TIMESTAMP]X-API-Signature: SIGNATURE from acm
+[TIMESTAMP]hmac md5 sigtext: SIGNATURE in ap
+[TIMESTAMP]saveSessionId [####]: save SessionId success
+[TIMESTAMP]saveSessionIdValidity [####]: save SessionIdValidity success
+[TIMESTAMP]sessionId ADM_TKN, apmac MAC_ADDR, apmode APMODE
+[TIMESTAMP]syncSessionId [####]: syncSessionId success
+...
+</code></pre>
+<p>If the above logs are printed yet no legitimate login attempt had been made at the specified TIMESTAMP, the router has likely been compromised.</p>
+<h2 id="mitigations"tabindex="-1">Mitigations</h2>
+<p>Alcatel recommends users of affected product to update to the latest version. If updating to the latest version is not possible, the workaround measure is to manage the affected product using Enterprise Mode with OmniVista Management platform and disable the web interface.</p>
+<p>For the patch, Alcatel mentioned that it will only be available on their extranet which is only accessible to their Business Partners. Hence, the affected users have to reach out to their Business Partners to update their vulnerable product.</p>
+<h2 id="variant-analysis"tabindex="-1">Variant analysis</h2>
+<p>Our approach and other areas we visited for variant analysis:</p>
+<ul>
+<li>Other functions handling input data for authentication-related endpoints</li>
+<li>Other potential authentication functions</li>
+</ul>
+<p>Although there were many other vulnerabilities, we did not find other vulnerabilities of the same nature within the firmware.</p>
+<h2 id="afterword"tabindex="-1">Afterword</h2>
+<p>This was my introduction to IoT security so I was very happy to have learnt a lot during this venture. In its own way, it almost felt like a CTF competition as there were much more vulnerabilities than I first expected there would be, so a fair amount of time is actually dedicated to crafting a proper POC to exploit the vulnerability.</p>
+<p>One thing, however, is that our team only really paid attention to the “good” bugs, i.e. bugs that can be exploited which are not just denial-of-service bugs, but as we learnt later on many other teams just submitted whatever vulnerabilities they found as potential bugs, so maybe we should’ve done that as well to max out our bounty.</p>
+<p>Nonetheless, this was a fun experience and I honestly wouldn’t mind playing again if I had the chance to.</p>
+<p>Do check out the other interesting bugs found by my teammates in the same target: <a href="https://jro.sg/CVEs/CVE-2025-52688/">CVE-2025-52688</a> | <a href="https://jro.sg/CVEs/CVE-2025-52690/">CVE-2025-52690</a></p>
+<p>Thanks for reading.</p>
+<h3 id="huge-thanks-to"tabindex="-1">Huge thanks to</h3>
+<ul>
+<li>My teammates who helped immensely during the competition (Thank you <a href="https://jro.sg/">jro</a> for dumping the live firmware!)</li>
+<li>NTU and STAR Labs SG for organising the competition and helping to triage all the bugs</li>
+</ul>
+
+      </section>
+      <section id="article-navigation">
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/23.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">A Deep Dive into CVE-2023-28252</p>
+                <p class="article-navigation-subtitle">Improper Exception Handling into Arbitrary Increment</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
